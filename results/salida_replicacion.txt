@@ -1,0 +1,221 @@
+
+==============================================================================
+1. DATOS - ICAO ENGINE EMISSIONS DATABANK  (Tables 4 y 5)
+==============================================================================
+
+Table 4 - EEDB-09/2019 (Issue 26B, 2019-09-20)   (N replicado = 563, N del paper = 565)
+Parameter                 Min         Max        Mean     Std Dev  |  paper Mean   paper Std
+engine_type                 1           2      1.2167     0.41236  |      1.2248     0.41781
+bypass_ratio             0.64       12.72     6.21803     2.35153  |      6.1787     2.39113
+press_ratio              9.76        49.4      30.523     8.23097  |     30.4341     8.30142
+rated_output             9.79       513.9     190.168     116.303  |     189.749     116.318
+ambient_baro            95.15      103.45     99.3863     1.66674  |      8004.3     85867.4
+ambient_temp            226.5       308.5      287.22     8.39808  |     286.912     10.3062
+ambient_humidity      0.00053     0.01715  0.00701738  0.00362442  |      0.0069     0.00366
+fuel_flow_to            0.148        4.69     1.70969    0.950317  |      1.7095     0.94789
+
+  AVISO: el paper reporta para 2019 ambient baro max=1019394.5, mean=8004.3, std=85867.39
+  y ambient temp min=144. Son valores fisicamente imposibles (la presion atmosferica
+  ronda 95-104 kPa). Provienen de celdas corruptas en la importacion del autor, no del
+  EEDB. Vease results/REPLICACION.md. La replica usa los valores correctos.
+
+Table 5 - EEDB-07/2021 (Issue 28C, 2021-07-20)   (N replicado = 773, N del paper = 773)
+Parameter                 Min         Max        Mean     Std Dev  |  paper Mean   paper Std
+engine_type                 1           2     1.20957    0.407267  |      1.2096     0.40727
+bypass_ratio                0     12.7211     6.59786     2.64049  |      6.5978     2.64116
+press_ratio              9.76     49.5509     31.3022     8.52774  |     31.3034     8.52827
+rated_output             9.79       513.9     186.533     118.293  |     186.532     118.293
+ambient_baro            95.15      103.45     99.4889     1.67661  |     99.4889     1.67661
+ambient_temp            226.5       308.5     287.188     8.14578  |     287.188     8.14578
+ambient_humidity      0.00053    0.041305  0.00703622  0.00377303  |       0.007     0.00377
+fuel_flow_to            0.148        4.69     1.64101    0.963492  |       1.641     0.96349
+
+Table 6 - Muestras concretas del EEDB (comprobacion del preprocesamiento)
+UID         type   bypass   press    rated     baro     temp   humidity  fuelflow
+1AS001         1     2.64   13.90    15.60   97.400   286.50    0.00765     0.205
+4AL002         2     4.76   17.81    33.73  101.300   288.00    0.00630     0.380
+1AA001         2     0.85   18.40    66.64  103.000   293.00    0.01048     1.150
+  paper: 1AS001 -> 1, 2.64, 13.9, 15.6, 97.4, 286.5, 0.00765, 0.205
+         1AA001 -> 2, 0.85, 18.4, 66.64, 103, 293, 0.01048, 1.670
+
+Particion 70/15/15: 394 entrenamiento, 84 validacion, 85 test (paper: 395 / 85 / 85)
+
+==============================================================================
+2. ANALISIS DE REGRESION LINEAL MULTIPLE  (Tables 7, 8, 9 y Eq. 2)
+==============================================================================
+
+Table 7 - Resumen del modelo
+                           replica       paper
+R                          0.98974     0.99000
+R_square                   0.97958     0.97900
+adjusted_R_square          0.97932     0.97900
+std_error                  0.13665     0.13733
+
+Table 8 - ANOVA
+                             replica         paper
+Sum sq. regression          497.1805      496.2460
+Sum sq. residual             10.3634       10.5050
+Sum sq. total               507.5439      506.7510
+df regression                 7.0000        7.0000
+df residual                 555.0000      557.0000
+df total                    562.0000      564.0000
+Mean sq. regression          71.0258       70.8920
+Mean sq. residual             0.0187        0.0190
+F                          3803.6899     3759.0010
+Sig.                          0.0000        0.0000
+
+Table 9 - Coeficientes
+                                B    Std.Err     Beta         t    Sig.  |      paper B   paper t  p Sig.
+(Constant)                 1.0969     0.5731    0.000     1.914   0.056  |        1.302     6.721   0.000
+engine_type             -0.053054    0.01798   -0.023    -2.951   0.003  |        -0.49    -2.962   0.003
+bypass_ratio            -0.099051   0.004164   -0.245   -23.785   0.000  |         -0.1   -23.782   0.000
+press_ratio            7.3328e-06   0.001583    0.000     0.005   0.996  |   -7.308e-05    -0.046   0.963
+rated_output            0.0086218  8.631e-05    1.055    99.894   0.000  |        0.009   100.231   0.000
+ambient_baro            0.0074002   0.004055    0.013     1.825   0.069  |    2.242e-07     3.234   0.001
+ambient_temp           -0.0037489   0.001073   -0.033    -3.494   0.001  |       -0.002    -2.646   0.008
+ambient_humidity         -0.76116      2.349   -0.003    -0.324   0.746  |       -4.612    -2.346   0.019
+
+Eq. (2) replicada:
+  Fuel Flow T/O = 1.09694 - 0.05305 x engine_type - 0.09905 x bypass_ratio + 7.333e-06 x press_ratio + 0.008622 x rated_output + 0.0074 x ambient_baro - 0.003749 x ambient_temp - 0.7612 x ambient_humidity
+
+Eq. (2) del paper:
+  Fuel Flow T/O = 1.302 - 0.49 x engine type - 0.1 x bypass ratio
+                  - 7.308e-05 x press ratio + 0.009 x rated output
+                  + 2.242e-07 x ambient baro - 0.002 x ambient temp
+                  - 4.612 x ambient humidity
+
+==============================================================================
+3. GAUSSIAN PROCESS REGRESSION  (Tables 10, 11 y Fig. 6)
+==============================================================================
+  Exponential GPR            ajustado en  19.9s
+  Rational quadratic GPR     ajustado en  23.7s
+  Squared exponential GPR    ajustado en  14.9s
+
+Table 10 - Comparacion de modelos GPR
+Kernel function            R train   R valid    R test    MSE train    MSE valid     MSE test
+Exponential GPR            1.00000   0.99558   0.99822   9.7189e-10    0.0095242    0.0039284
+  (paper)                  1.00000   0.98086   0.99640    1.302e-06      0.02783       0.0066
+Rational quadratic GPR     0.99993   0.99650   0.99675   0.00011272    0.0073875     0.006567
+  (paper)                  0.99997   0.98337   0.99530    5.188e-05      0.02467        0.009
+Squared exponential GPR    0.99992   0.99323   0.99668   0.00013177     0.014265    0.0066866
+  (paper)                  0.99996   0.98245   0.98560    6.447e-05       0.0266       0.0272
+
+Mejor modelo GPR por MSE en test: Exponential GPR   (el paper selecciona: Exponential GPR)
+
+Table 11 - Estructura del modelo GPR seleccionado
+  paper: Basis=Constant, Kernel scale=Auto, Sigma=0.0096, Beta=1.7404, Optimizer=Quasinewton
+  Model type                    exponential GPR
+  Basis function                Constant
+  Sigma                         0.000918435
+  Beta                          1.9879
+  Optimizer                     Quasinewton (BFGS)
+  Signal std (sigma_f)          3.75315
+  Kernel scale (length scale)   561.516
+
+==============================================================================
+4. SUPPORT VECTOR MACHINE  (Tables 12, 13 y Fig. 7)
+==============================================================================
+  Hiperparametros por defecto de fitrsvm sobre el bloque de entrenamiento:
+    Box constraint = iqr(y)/1.349  = 1.2092   (paper: 1.2076)
+    Epsilon        = iqr(y)/13.49  = 0.1209   (paper: 0.1208)
+
+Table 12 - Comparacion de modelos SVM
+Kernel function            R train   R valid    R test    MSE train    MSE valid     MSE test
+Quadratic SVM              0.99520   0.99471   0.99524    0.0085675     0.011177     0.010005
+  (paper)                  0.99655   0.97499   0.99709      0.00646      0.04503      0.00542
+Cubic SVM                  0.99119   0.95610   0.98957      0.01639     0.095239     0.023775
+  (paper)                  0.99624   0.44859   0.99459      0.00717       1.4634      0.01016
+Linear SVM                 0.98870   0.99078   0.99104     0.019128     0.020386     0.018726
+  (paper)                  0.98939   0.98859   0.98906      0.02005      0.01735      0.02062
+
+Mejor modelo SVM por MSE en test: Quadratic SVM   (el paper selecciona: Quadratic SVM)
+
+Table 13 - Estructura del modelo SVM seleccionado
+  paper: Function=Polynomial, Kernel scale=Auto, Box constraint=1.2076, Bias=1.7458, Epsilon=0.1208
+  Model type                    Quadratic SVM
+  Function                      Polynomial
+  Kernel scale                  1
+  Box constraint                1.20923
+  Bias                          1.66819
+  Epsilon                       0.120923
+  Support vectors               49
+
+==============================================================================
+5. MULTILAYER PERCEPTRON  (Tables 14, 15 y Fig. 9)
+==============================================================================
+
+Table 14 - Comparacion de los 9 modelos MLP (ordenados por MSE en test)
+Model     Algorithm      R train   R valid    R test   MSE train   MSE valid    MSE test
+Model 1   trainlm        0.99865   0.99808   0.99837   0.0022842   0.0040314   0.0035042
+Model 2   trainrp        0.99803   0.99816   0.99811   0.0033135   0.0040611   0.0039881
+Model 3   trainlm        0.99875   0.99882   0.99812   0.0021069   0.0024897   0.0040106
+Model 4   trainlm        0.99871   0.99876   0.99800   0.0021695    0.002652   0.0042395
+Model 5   trainrp        0.99787   0.99748   0.99791   0.0035911   0.0057254     0.00424
+Model 6   trainrp        0.99767   0.99738   0.99678   0.0039289   0.0059279   0.0065001
+Model 7   traincgb       0.99451   0.99328   0.99567   0.0092618    0.015033   0.0091002
+Model 8   traincgb       0.99234   0.99167   0.99488    0.012997    0.017636      0.0108
+Model 9   traincgb       0.99199   0.99077   0.99422    0.013472    0.019899    0.012661
+
+  paper Model 1 'trainlm':  R = 0.9991 / 0.9970 / 0.9986   MSE = 0.00168 / 0.00427 / 0.0025488
+
+Mejor modelo MLP: entrenado con 'trainlm'   (el paper selecciona: trainlm)
+
+Table 15 - Estructura del modelo MLP
+  Layers          7 - 10-8-4-3 - 1
+  Activation      'tansig' - 'logsig' - 'tansig' - 'purelin' - 'purelin'
+  Parameters      223
+  Training set    394 (70%)   Validation 84 (15%)   Test 85 (15%)
+  paper: capas 7-10-8-4-3-1, 'tansig'-'logsig'-'tansig'-'purelin', salida lineal, trainlm
+
+==============================================================================
+6. COMPARACION DE LOS TRES MODELOS  (Table 16)
+==============================================================================
+Data set    Model                             MSE        MAE     MAPE %  |    paper MSE  paper MAE paper MAPE
+Training    Exponential GPR           9.71891e-10 7.3839e-06 0.00045247  |  1.30297e-06 0.00053333   0.035374
+Training    MLP                         0.0022842   0.034584     2.9737  |    0.0016894     0.0026     2.1136
+Training    Quadratic SVM              0.00856754   0.078208     7.9742  |    0.0064694    0.06229     5.3857
+
+Validation  MLP                        0.00403138   0.039868      5.155  |    0.0042769     0.0427     3.5246
+Validation  Exponential GPR            0.00952421   0.028592     7.0781  |    0.0278303   0.042242     6.6887
+Validation  Quadratic SVM               0.0111775   0.080341     10.523  |    0.0450386   0.084739     10.415
+
+Test        MLP                        0.00350416   0.042896     3.2888  |    0.0025488     0.0314      2.215
+Test        Exponential GPR            0.00392844   0.029502     2.5273  |    0.0066794   0.025113     5.7259
+Test        Quadratic SVM               0.0100046   0.081934     7.5565  |    0.0054221   0.059196      4.909
+
+Mejor modelo global por MSE en test: MLP   (el paper concluye: MLP)
+
+==============================================================================
+7. VALIDACION DEL MLP SOBRE LOS DOS CONJUNTOS  (Table 17)
+==============================================================================
+Data group                              Size       MAE       MSE         R    MAPE %
+EEDB (09/2019) gaseous emis. and smoke    563 x 8    0.0366    0.0027   0.99850    3.3467
+  (paper)                                       0.0294    0.0022   0.99878    2.3411
+EEDB (07/2021) gaseous emis. and smoke    773 x 8    0.0412    0.0085   0.99555    3.4954
+  (paper)                                       0.0298    0.0219   0.98839    2.8975
+
+==============================================================================
+8. INTERVALOS DE CONFIANZA AL 99%  (Table 18, Figs. 10 y 11)
+==============================================================================
+
+Table 18 - Valores criticos
+Level (%)          z   1 - alpha
+99             2.580        0.99
+95             1.960        0.95
+90             1.645        0.90
+
+sigma (desviacion tipica del error del MLP en entrenamiento) = 0.04777 kg/s
+semianchura del intervalo al 99% = 2.58 * sigma = 0.12324 kg/s
+
+EEDB-09/2019: 563 motores, 22 fuera del intervalo al 99% (3.91% -> posible degradacion de performance)
+
+EEDB-07/2021: 773 motores, 34 fuera del intervalo al 99% (4.40% -> posible degradacion de performance)
+
+Total de motores evaluados: 1336   (el paper evalua 1338)
+
+Figuras generadas en results/figures/:
+  fig06_gpr.png
+  fig07_svm.png
+  fig09_mlp.png
+  fig10_ci_2019.png
+  fig11_ci_2021.png
