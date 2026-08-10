@@ -1,5 +1,13 @@
 __pycache__/
 *.pyc
 
+# Artefactos de compilacion LaTeX
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+
 # Copia personal del articulo original (Springer, de pago) -- no redistribuir.
 paperEvaluationKurt - copia.pdf
