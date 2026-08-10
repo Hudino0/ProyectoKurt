@@ -107,55 +107,36 @@
 \end{frame}
 
 \begin{frame}{El ciclo LTO (\textit{Landing and Take-Off}) de la ICAO}
-    \justifying
-    \small La ICAO (Organización de Aviación Civil Internacional) define un ciclo estándar, el \textbf{ciclo LTO}, para medir y certificar emisiones cerca de los aeropuertos (por debajo de 3000 pies de altitud). Tiene 4 fases, cada una con una duración y un porcentaje de empuje fijos:
-    \bigskip
-
     \begin{center}
-    \resizebox{\linewidth}{!}{%
-    \begin{tikzpicture}[node distance=0.35cm]
-        \node[cajai] (a) {Taxi / \textit{idle} salida\\[2pt]\scriptsize 19.0 min -- 7\%};
-        \node[cajad, right=of a] (b) {\textbf{Despegue}\\[2pt]\scriptsize 0.7 min -- 100\%};
-        \node[cajai, right=of b] (c) {Ascenso\\[2pt]\scriptsize 2.2 min -- 85\%};
-        \node[cajai, right=of c] (d) {Aproximación\\[2pt]\scriptsize 4.0 min -- 30\%};
-        \node[cajai, right=of d] (e) {Taxi / \textit{idle} entrada\\[2pt]\scriptsize 7.0 min -- 7\%};
-        \draw[flecha] (a) -- (b);
-        \draw[flecha] (b) -- (c);
-        \draw[flecha] (c) -- (d);
-        \draw[flecha] (d) -- (e);
+    \resizebox{!}{0.86\textheight}{%
+    \begin{tikzpicture}[node distance=0.4cm]
+        \node[cajai, text width=5.2cm, minimum height=1.5cm, font=\normalsize] (a) {Taxi / \textit{idle} salida\\[5pt]\small 19.0 min -- 7\%};
+        \node[cajad, below=of a, text width=5.2cm, minimum height=1.5cm, font=\normalsize\bfseries] (b) {Despegue\\[5pt]\small 0.7 min -- 100\%};
+        \node[cajai, below=of b, text width=5.2cm, minimum height=1.5cm, font=\normalsize] (c) {Ascenso\\[5pt]\small 2.2 min -- 85\%};
+        \node[cajai, below=of c, text width=5.2cm, minimum height=1.5cm, font=\normalsize] (d) {Aproximación\\[5pt]\small 4.0 min -- 30\%};
+        \node[cajai, below=of d, text width=5.2cm, minimum height=1.5cm, font=\normalsize] (e) {Taxi / \textit{idle} entrada\\[5pt]\small 7.0 min -- 7\%};
+        \draw[flecha, line width=1.4pt] (a) -- (b);
+        \draw[flecha, line width=1.4pt] (b) -- (c);
+        \draw[flecha, line width=1.4pt] (c) -- (d);
+        \draw[flecha, line width=1.4pt] (d) -- (e);
     \end{tikzpicture}}
     \end{center}
-    \bigskip
-
-    \footnotesize En \textcolor{suda}{\textbf{rojo}}, la fase que estudia este artículo: el despegue, con el motor al 100\% de empuje. (Datos: Tabla 1 del artículo, según ICAO Annex 16).
 \end{frame}
 
-\begin{frame}{El banco de datos EEDB y el vacío en la literatura}
+\begin{frame}{Objetivo del artículo}
     \justifying
-    Todo motor turborreactor o turbofán certificado por la ICAO debe pasar pruebas en banco, cuyos resultados se guardan públicamente en el \textbf{EEDB} (\textit{ICAO Engine Emissions Data Bank}): miles de registros con parámetros de operación y emisiones de motores reales.
-    \bigskip
-
-    \begin{alertblock}{El problema que aborda el artículo}
-        Hoy en día, evaluar si un motor se está degradando requiere \textbf{desarmarlo} o consultar a un \textbf{experto}. \textbf{No existe} en la literatura un modelo que evalúe el desempeño del motor en el despegue usando únicamente los datos del EEDB y técnicas de \textit{Machine Learning} (ML).
-    \end{alertblock}
-    \bigskip
-
-    \textbf{Objetivo del artículo:} construir un modelo de ML que prediga el parámetro \textbf{\textit{fuel flow T/O}} (flujo de combustible en despegue, en kg/s) a partir de variables fáciles de medir, y usarlo como indicador indirecto del estado del motor.
+    \Large
+    El artículo construye un modelo de \textit{Machine Learning} que predice el \textbf{\textit{fuel flow T/O}} (flujo de combustible en despegue, en kg/s) a partir de variables fáciles de medir. El modelo sirve como indicador indirecto del estado del motor.
 \end{frame}
 
 \begin{frame}{¿Por qué el \textit{fuel flow T/O} como indicador de desempeño?}
     \justifying
-    El \textbf{\textit{fuel flow T/O}} es la cantidad de combustible que quema el motor por segundo durante el despegue. Es una variable que:
+    \large
     \begin{itemize}
-        \item Se usa directamente para calcular las \textbf{emisiones} del motor (junto con los índices de emisión),
+        \item Se usa directamente para calcular las \textbf{emisiones} del motor (junto con los índices de emisión).
         \item \textbf{Cambia} cuando hay fallas o degradación: separación del motor, apagado en vuelo, daño severo, problemas de control de combustible, fugas, etc.
         \item Está \textbf{disponible} para todos los motores certificados en el EEDB.
     \end{itemize}
-    \bigskip
-
-    \begin{block}{Idea del método}
-        Si el modelo predice cuánto \textbf{debería} fluir el combustible dadas las condiciones de un motor \textit{sano}, y el valor real medido se aleja demasiado de esa predicción, eso es evidencia de una posible degradación del motor.
-    \end{block}
 \end{frame}
 
 %============================================================
@@ -164,10 +145,10 @@
 
 \begin{frame}{¿Qué es un problema de regresión supervisada?}
     \justifying
-    Antes de entrar en los tres métodos del artículo, aclaremos la tarea que resuelven los tres: es un problema de \textbf{regresión supervisada}.
+    Antes de presentar los tres métodos del artículo, conviene aclarar la tarea que todos resuelven: es un problema de \textbf{regresión supervisada}.
 
     \begin{itemize}
-        \item Tenemos ejemplos pasados donde \textbf{conocemos} tanto las variables de entrada (edad del diseño del motor, condiciones ambientales, etc.) como el valor real de la variable a predecir (\textit{fuel flow T/O}).
+        \item Existen ejemplos pasados donde \textbf{se conocen} tanto las variables de entrada (edad del diseño del motor, condiciones ambientales, etc.) como el valor real de la variable a predecir (\textit{fuel flow T/O}).
         \item El algoritmo \textbf{aprende} una función $f$ tal que $\hat{y} = f(x_1, x_2, \dots, x_n)$ se parezca lo más posible al valor real $y$.
         \item Como la salida es un \textbf{número continuo} (kg/s) y no una categoría, es \textbf{regresión} y no clasificación.
     \end{itemize}
@@ -185,10 +166,10 @@
     \begin{itemize}
         \item Antes de ver datos, el modelo considera \textbf{muchas} funciones plausibles.
         \item Cada punto de dato observado \textbf{descarta} las funciones que no pasan cerca de él.
-        \item El resultado es una función media (la predicción) \textbf{más una banda de incertidumbre}: el modelo también te dice \textit{qué tan seguro está} de su predicción en cada zona.
+        \item El resultado es una función media (la predicción) \textbf{más una banda de incertidumbre}: el modelo también indica \textit{qué tan seguro está} de su predicción en cada zona.
     \end{itemize}
     \bigskip
-    \footnotesize Esto es justo lo que se usa después en el artículo para construir los \textbf{intervalos de confianza} que detectan degradación del motor (Sección de resultados).
+    \footnotesize El artículo usa esa banda para construir los \textbf{intervalos de confianza} que detectan degradación del motor (Sección de resultados).
 \end{frame}
 
 \begin{frame}{GPR: función media, incertidumbre y kernel}
@@ -229,7 +210,7 @@
 
 \begin{frame}{SVM: la idea intuitiva}
     \justifying\small
-    Las \textbf{Máquinas de Vectores de Soporte} (\textit{Support Vector Machines}, SVM) nacieron para \textbf{clasificar} (separar dos grupos con la mejor frontera posible), pero también se pueden usar para \textbf{regresión}: en ese caso, en vez de separar clases, buscan la función que mejor se ajusta a los datos.
+    Las \textbf{Máquinas de Vectores de Soporte} (\textit{Support Vector Machines}, SVM) nacieron para \textbf{clasificar}: separar dos grupos con la mejor frontera posible. También sirven para \textbf{regresión}: en vez de separar clases, buscan la función que mejor se ajusta a los datos.
     \medskip
 
     \begin{itemize}
@@ -239,7 +220,7 @@
     \end{itemize}
     \medskip
     \begin{alertblock}{Nota sobre el nombre}
-        En tareas de regresión, esta técnica a veces se llama \textit{Support Vector Regression} (SVR). El artículo de Kurt la llama \textbf{SVM} en todo momento, y esta presentación mantiene ese mismo nombre por consistencia con la fuente.
+        En tareas de regresión, esta técnica a veces se llama \textit{Support Vector Regression} (SVR). El artículo de Kurt la llama \textbf{SVM}, y esta presentación mantiene ese nombre por consistencia con la fuente.
     \end{alertblock}
 \end{frame}
 
@@ -285,9 +266,9 @@
         \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in4] (in5) {Ambient baro};
         \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in5] (in6) {Ambient temp};
         \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in6] (in7) {Ambient hum.};
-        \node[cajad, text width=1.7cm, minimum height=1.6cm, right=1.6cm of in4, font=\tiny\bfseries] (ker) {Vector soporte + \textit{kernel}};
+        \node[cajad, text width=1.7cm, minimum height=1.6cm, right=2.2cm of in4, font=\tiny\bfseries] (ker) {Vector soporte + \textit{kernel}};
         \node[cajad, text width=1.9cm, minimum height=1.0cm, right=1.6cm of ker, font=\tiny\bfseries] (out) {Fuel flow T/O predicho};
-        \foreach \i in {1,...,7}{ \draw[flecha] (in\i) -- (ker); }
+        \foreach \i in {1,...,7}{ \draw[flecha] (in\i.east) -- ($(ker.north west)!{(\i-0.5)/7}!(ker.south west)$); }
         \draw[flecha] (ker) -- (out);
     \end{tikzpicture}
     \end{center}
@@ -309,16 +290,15 @@
 \begin{frame}{MLP: arquitectura usada en el artículo}
     \begin{center}
     \begin{tikzpicture}[scale=0.72, every node/.style={scale=0.72}]
-        \foreach \y [count=\i from 0] in {1,...,7}{
-            \node[neurona] (i\y) at (0,-\y*0.62) {};
-        }
-        \node[font=\tiny, align=center] at (0,-5.6) {Entrada\\(7)};
-        \foreach \y in {1,...,4}{ \node[neurona] (h1\y) at (2.3,-\y*0.9-0.4) {}; }
-        \node[font=\tiny, align=center] at (2.3,-5.6) {Ocultas\\(10-8-4-3)};
-        \foreach \y in {1,...,3}{ \node[neurona] (h2\y) at (4.2,-\y*0.9+0.05) {}; }
-        \foreach \y in {1,...,2}{ \node[neurona] (h3\y) at (6.1,-\y*0.9+0.5) {}; }
-        \node[neuronaout] (o) at (8.0,-2.8) {};
-        \node[font=\tiny, align=center] at (8.0,-5.6) {Salida\\(1)};
+        \def\dy{0.78}
+        \foreach \y in {1,...,7}{ \node[neurona] (i\y) at (0,{3*\dy-(\y-1)*\dy}) {}; }
+        \node[font=\tiny, align=center] at (0,-3.6) {Entrada\\(7)};
+        \foreach \y in {1,...,4}{ \node[neurona] (h1\y) at (2.3,{1.5*\dy-(\y-1)*\dy}) {}; }
+        \node[font=\tiny, align=center] at (2.3,-3.6) {Ocultas\\(10-8-4-3)};
+        \foreach \y in {1,...,3}{ \node[neurona] (h2\y) at (4.2,{1*\dy-(\y-1)*\dy}) {}; }
+        \foreach \y in {1,...,2}{ \node[neurona] (h3\y) at (6.1,{0.5*\dy-(\y-1)*\dy}) {}; }
+        \node[neuronaout] (o) at (8.0,0) {};
+        \node[font=\tiny, align=center] at (8.0,-3.6) {Salida\\(1)};
         \foreach \a in {1,...,7}{ \foreach \b in {1,...,4}{ \draw[gray,thin] (i\a) -- (h1\b); } }
         \foreach \a in {1,...,4}{ \foreach \b in {1,...,3}{ \draw[gray,thin] (h1\a) -- (h2\b); } }
         \foreach \a in {1,...,3}{ \foreach \b in {1,...,2}{ \draw[gray,thin] (h2\a) -- (h3\b); } }
@@ -476,7 +456,7 @@
         \bottomrule
     \end{tabular}}
     \end{table}
-    \footnotesize Estructura del modelo ganador (Tabla 11): función base constante, escala de kernel automática, $\sigma=0.0096$, optimizador \textit{Quasi-Newton}. En entrenamiento llega a $R=1$ y MSE $\approx 1.3\times10^{-6}$: ajusta casi perfecto los datos ya vistos, pero eso no garantiza que generalice igual de bien (por eso importan validación y prueba).
+    \footnotesize Estructura del modelo ganador (Tabla 11): función base constante, escala de kernel automática, $\sigma=0.0096$, optimizador \textit{Quasi-Newton}. En entrenamiento llega a $R=1$ y MSE $\approx 1.3\times10^{-6}$: ajusta casi perfectamente los datos ya vistos, pero eso no garantiza que generalice igual de bien (por eso importan validación y prueba).
 \end{frame}
 
 \begin{frame}{Resultados: SVM}
@@ -540,7 +520,7 @@
     \end{axis}
     \end{tikzpicture}
     \end{center}
-    \footnotesize Datos reales de la Tabla 16. GPR se ajusta casi perfecto en entrenamiento pero pierde precisión en validación/prueba (señal de sobreajuste leve); \textbf{MLP} es el más equilibrado: mejor en validación y prueba, y todos sus MAPE quedan bajo 5\%.
+    \footnotesize Datos reales de la Tabla 16. GPR se ajusta casi perfectamente en entrenamiento pero pierde precisión en validación/prueba (señal de sobreajuste leve); \textbf{MLP} es el más equilibrado: mejor en validación y prueba, y todos sus MAPE quedan bajo 5\%.
 \end{frame}
 
 \begin{frame}{Prueba de generalización con datos de 2021}
