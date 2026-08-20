@@ -1,71 +1,67 @@
-# Replicación del artículo de Kurt (2024)
+# ProyectoKurt — Jet-Engine Fuel-Flow Prediction, ML From Scratch
 
-Réplica completa, en Python y **sin librerías de machine learning**, de:
+**I rebuilt four machine-learning models by hand — no scikit-learn, no
+TensorFlow — to predict jet-engine fuel flow, and reproduced every result of a
+2024 research paper.**
 
-> Kurt, B. (2024). *Evaluation of aircraft engine performance during takeoff phase with
-> machine learning methods.* Neural Computing and Applications, 36:19173–19190.
-> <https://doi.org/10.1007/s00521-024-10220-3>
+A full Python replication of:
 
-El artículo predice el parámetro **Fuel Flow T/O** de motores aeronáuticos a partir de
-7 variables del ICAO Engine Emissions Databank, comparando regresión lineal múltiple,
-GPR, SVM y MLP, y usa el mejor modelo para detectar degradación de performance mediante
-intervalos de confianza al 99%.
+> Kurt, B. (2024). *Evaluation of aircraft engine performance during takeoff
+> phase with machine learning methods.* Neural Computing and Applications,
+> 36:19173–19190. <https://doi.org/10.1007/s00521-024-10220-3>
 
-## Ejecutar
+The paper predicts an engine's **takeoff fuel flow (Fuel Flow T/O)** from 7
+variables in the ICAO Engine Emissions Databank. It compares multiple linear
+regression, Gaussian process regression (GPR), support vector machines (SVM),
+and a neural network (MLP), then uses the best model to flag engine performance
+loss with 99% confidence intervals.
 
-```bash
-python run_replication.py
-```
+## Built from scratch
 
-Tarda unos 4 minutos. Imprime cada tabla del artículo junto a la réplica, y genera
-figuras y CSV en `results/`.
+The only library is NumPy, for arrays and basic linear algebra. Every model is
+my own code:
 
-Dependencias: `numpy`, `openpyxl`, `matplotlib`.
+| Component | My implementation |
+|---|---|
+| Multiple linear regression | Householder QR decomposition |
+| t and F p-values | Incomplete beta function, Lentz continued fraction |
+| Gaussian process regression | Right-looking Cholesky + BFGS on the marginal likelihood |
+| Support vector regression | SMO with an exact 2-variable subproblem solution |
+| Neural network (MLP) | Levenberg–Marquardt (analytic Jacobian), Rprop, Powell–Beale conjugate gradient |
+
+## Run it
 
 ```bash
 python -m pip install numpy openpyxl matplotlib
+python run_replication.py        # ~4 minutes
 ```
 
-## Qué está construido desde cero
+It prints every table from the paper next to my replication, and writes figures
+and CSVs to `results/`.
 
-Ninguno de los modelos usa scikit-learn, TensorFlow ni PyTorch. NumPy se emplea sólo como
-librería de arrays y álgebra lineal básica.
+## Results
 
-| Componente | Implementación propia |
-|---|---|
-| Regresión lineal múltiple | Descomposición QR de Householder |
-| p-valores de t y F | Función beta incompleta, fracción continua de Lentz |
-| Gaussian process regression | Cholesky *right-looking* + BFGS sobre la verosimilitud marginal |
-| Support vector regression | SMO con solución exacta del subproblema de 2 variables |
-| Multilayer perceptron | Levenberg–Marquardt (jacobiano analítico), Rprop y gradiente conjugado Powell–Beale |
+I reproduce every conclusion in the paper. The full table-by-table report is in
+[REPLICACION.md](REPLICACION.md) (Spanish).
 
-## Resultados
+I also found a flaw in the original paper: Table 4 lists physically impossible
+values for barometric pressure and temperature. I trace where they come from by
+rebuilding them, by arithmetic, from the paper's own published statistics.
 
-Todas las conclusiones del artículo se reproducen. Informe detallado con la comparación
-tabla a tabla en **[`REPLICACION.md`](REPLICACION.md)**.
+## Extra: data the paper never saw (2023–2026)
 
-Incluye además un hallazgo sobre el artículo original: la Table 4 contiene valores
-físicamente imposibles de presión barométrica y temperatura, cuyo origen se reconstruye
-por aritmética a partir de los estadísticos publicados.
+The paper stops at the 07/2021 databank. `run_new_edition_evidence.py` applies
+the same MLP to any later edition. On the 2023, 2025, and current 2026 editions
+it scores **3.42–3.48% MAPE** — "very good" on Lewis's scale, the same grade as
+2019 and 2021. Details in [REPLICACION.md §6](REPLICACION.md).
 
-## Evidencia adicional: ediciones del EEDB posteriores al paper (2023-2026)
-
-El paper sólo llega hasta EEDB-07/2021. `python run_new_edition_evidence.py <fichero.xlsx>`
-aplica el mismo MLP a cualquier edición posterior indicada (pide el fichero si no se pasa
-por argumento) como punto extra de generalización. Se probó con las ediciones de 2023,
-2025 y la vigente de 2026 (MAPE 3.42-3.48%, "very good" de Lewis en las tres, igual que
-2019 y 2021). Detalle en **[`REPLICACION.md` §6](REPLICACION.md)**.
-
-## Estructura
+## What's inside
 
 ```
-data/                          EEDB: ediciones del paper (09/2019, 07/2021) + ediciones
-                                posteriores (2023, 2025, vigente 03/2026)
-src/                           módulos: datos, métricas, y los cuatro modelos
-run_replication.py             pipeline completo del paper
-run_new_edition_evidence.py    evidencia adicional sobre la edición vigente del EEDB
-results/                       tablas, figuras y CSV preprocesados
-tasks/todo.md                  plan y revisión final
-tasks/lessons.md               lecciones del desarrollo
-tasks/RESUMEN_SESION.md        mapa de orientación rápida del proyecto
+data/                         ICAO databank: paper editions (2019, 2021) + later (2023, 2025, 2026)
+src/                          modules: data loading, metrics, and the four models
+run_replication.py            the full paper pipeline
+run_new_edition_evidence.py   extra test on the current databank edition
+results/                      tables, figures, preprocessed CSVs
+tasks/                        development notes and project map
 ```
