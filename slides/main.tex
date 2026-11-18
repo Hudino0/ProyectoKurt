@@ -19,6 +19,7 @@
 \usepackage{bm}
 \usepackage{amssymb}
 \usepackage{multirow}
+\usepackage{array}
 \usefonttheme{serif}
 \setbeamertemplate{navigation symbols}{}
 
@@ -85,23 +86,23 @@
 \section{Contexto y motivación}
 %============================================================
 
-\begin{frame}{¿Por qué importa el desempeño de un motor en el despegue?}
+\begin{frame}{¿Por qué importa el desempeño del motor en el despegue?}
     \begin{columns}[c]
-        \column{6.7cm}
-        \justifying
-        Durante el despegue, los motores de un avión trabajan a su \textbf{velocidad y temperatura máximas} para generar el empuje necesario. Este es el punto de operación más exigente de todo el vuelo.
-        \bigskip
+        \column{6.4cm}
+        \large
+        En el despegue, el motor trabaja a \textbf{velocidad y temperatura máximas}.
+        \medskip
 
-        Con el uso y el tiempo, el motor se \textbf{degrada}, es decir, deja de comportarse como cuando era nuevo, debido a:
+        Con el uso, el motor se \textbf{degrada} por:
         \begin{itemize}
-            \item \textit{Fouling} (ensuciamiento de álabes),
+            \item Ensuciamiento de álabes (\textit{fouling}),
             \item Erosión y abrasión,
             \item Corrosión y oxidación en caliente,
-            \item Degradación mecánica general.
+            \item Desgaste mecánico.
         \end{itemize}
         \column{5cm}
-        \begin{block}{Consecuencia clave}
-            Un motor degradado \textbf{consume más combustible} y \textbf{genera más emisiones contaminantes} (CO$_2$, NO$_x$, hollín, etc.) para producir el mismo empuje.
+        \begin{block}{Consecuencia}
+            \large Un motor degradado \textbf{quema más combustible} y \textbf{emite más contaminantes} para dar el mismo empuje.
         \end{block}
     \end{columns}
 \end{frame}
@@ -126,16 +127,21 @@
 \begin{frame}{Objetivo del artículo}
     \justifying
     \Large
-    El artículo construye un modelo de \textit{Machine Learning} que predice el \textbf{\textit{fuel flow T/O}} (flujo de combustible en despegue, en kg/s) a partir de variables fáciles de medir. El modelo sirve como indicador indirecto del estado del motor.
+    El artículo predice el \textbf{\textit{fuel flow T/O}} (flujo de combustible en el despegue, en kg/s) con \textit{Machine Learning}.
+    \bigskip
+
+    Si el valor medido se aleja mucho del valor predicho, el motor puede estar degradado.
 \end{frame}
 
 \begin{frame}{¿Por qué el \textit{fuel flow T/O} como indicador de desempeño?}
     \justifying
     \large
     \begin{itemize}
-        \item Se usa directamente para calcular las \textbf{emisiones} del motor (junto con los índices de emisión).
-        \item \textbf{Cambia} cuando hay fallas o degradación: separación del motor, apagado en vuelo, daño severo, problemas de control de combustible, fugas, etc.
-        \item Está \textbf{disponible} para todos los motores certificados en el EEDB.
+        \item Sirve para calcular las \textbf{emisiones} del motor, junto con los índices de emisión.
+        \medskip
+        \item \textbf{Cambia} cuando el motor tiene fallas: daño severo, apagado en vuelo, fugas o problemas en el control de combustible.
+        \medskip
+        \item El EEDB lo \textbf{publica} para todos los motores certificados.
     \end{itemize}
 \end{frame}
 
@@ -145,45 +151,43 @@
 
 \begin{frame}{¿Qué es un problema de regresión supervisada?}
     \justifying
-    Antes de presentar los tres métodos del artículo, conviene aclarar la tarea que todos resuelven: es un problema de \textbf{regresión supervisada}.
+    Los tres métodos del artículo resuelven la misma tarea: una \textbf{regresión supervisada}.
 
     \begin{itemize}
-        \item Existen ejemplos pasados donde \textbf{se conocen} tanto las variables de entrada (edad del diseño del motor, condiciones ambientales, etc.) como el valor real de la variable a predecir (\textit{fuel flow T/O}).
-        \item El algoritmo \textbf{aprende} una función $f$ tal que $\hat{y} = f(x_1, x_2, \dots, x_n)$ se parezca lo más posible al valor real $y$.
-        \item Como la salida es un \textbf{número continuo} (kg/s) y no una categoría, es \textbf{regresión} y no clasificación.
+        \item Los datos de entrenamiento tienen las entradas (tipo de motor, condiciones ambientales, etc.) y el valor real de la salida (\textit{fuel flow T/O}).
+        \item El algoritmo \textbf{aprende} una función $f$. La predicción $\hat{y} = f(x_1, x_2, \dots, x_n)$ debe quedar cerca del valor real $y$.
+        \item La salida es un \textbf{número continuo} (kg/s), no una categoría. Por eso el problema es de regresión y no de clasificación.
     \end{itemize}
     \bigskip
 
-    Los tres modelos del artículo —\textbf{GPR}, \textbf{SVM} y \textbf{MLP}— son tres formas distintas de construir esa función $f$ a partir de los datos.
+    \textbf{GPR}, \textbf{SVM} y \textbf{MLP} construyen la función $f$ de tres formas distintas.
 \end{frame}
 
 \subsection{Regresión de Procesos Gaussianos (GPR)}
 
 \begin{frame}{GPR: la idea intuitiva}
     \justifying
-    La \textbf{Regresión de Procesos Gaussianos} (\textit{Gaussian Process Regression}, GPR) no busca ``una sola curva óptima'', sino que trabaja con una \textbf{distribución de probabilidad sobre funciones posibles}.
+    La \textbf{Regresión de Procesos Gaussianos} (\textit{Gaussian Process Regression}, GPR) no ajusta una sola curva. Trabaja con una \textbf{distribución de probabilidad sobre funciones}.
 
     \begin{itemize}
-        \item Antes de ver datos, el modelo considera \textbf{muchas} funciones plausibles.
-        \item Cada punto de dato observado \textbf{descarta} las funciones que no pasan cerca de él.
-        \item El resultado es una función media (la predicción) \textbf{más una banda de incertidumbre}: el modelo también indica \textit{qué tan seguro está} de su predicción en cada zona.
+        \item Antes de ver los datos, el modelo acepta \textbf{muchas} funciones posibles.
+        \item Cada dato observado \textbf{descarta} las funciones que no pasan cerca de él.
+        \item El resultado es una función media (la predicción) y una \textbf{banda de incertidumbre}. La banda indica qué tan confiable es la predicción en cada zona.
     \end{itemize}
-    \bigskip
-    \footnotesize El artículo usa esa banda para construir los \textbf{intervalos de confianza} que detectan degradación del motor (Sección de resultados).
 \end{frame}
 
 \begin{frame}{GPR: función media, incertidumbre y kernel}
     \begin{columns}[c]
         \column{5.6cm}
         \small
-        Formalmente (Ec.~3 del artículo):
+        Definición (Ec.~3 del artículo):
         $$ f(x) \sim \text{GPR}\big(m(x), k(x,x')\big) $$
         \begin{itemize}
-            \item $m(x)$: función \textbf{media}, la mejor predicción puntual.
-            \item $k(x,x')$: función de \textbf{covarianza} (\textit{kernel}): mide cuán ``parecidos'' son dos puntos $x$ y $x'$; define qué tan suave es la incertidumbre.
+            \item $m(x)$: función \textbf{media}. Es la predicción puntual.
+            \item $k(x,x')$: función de \textbf{covarianza} (\textit{kernel}). Mide qué tan parecidos son dos puntos $x$ y $x'$. Define qué tan suave es la función.
         \end{itemize}
         \bigskip
-        El artículo probó 3 \textit{kernels}: \textbf{exponencial}, \textbf{exponencial cuadrado} y \textbf{racional cuadrático}.
+        El artículo prueba 3 \textit{kernels}: \textbf{exponencial}, \textbf{exponencial cuadrado} y \textbf{racional cuadrático}.
         \column{5.6cm}
         \begin{tikzpicture}[scale=0.78]
         \begin{axis}[
@@ -202,7 +206,7 @@
             \addlegendentry{datos observados}
         \end{axis}
         \end{tikzpicture}
-        \footnotesize\textit{Esquema ilustrativo}: la banda se angosta cerca de los datos observados y se ensancha donde hay poca información.
+        \footnotesize\textit{Esquema ilustrativo}: la banda es angosta cerca de los datos y ancha donde faltan datos.
     \end{columns}
 \end{frame}
 
@@ -210,17 +214,17 @@
 
 \begin{frame}{SVM: la idea intuitiva}
     \justifying\small
-    Las \textbf{Máquinas de Vectores de Soporte} (\textit{Support Vector Machines}, SVM) nacieron para \textbf{clasificar}: separar dos grupos con la mejor frontera posible. También sirven para \textbf{regresión}: en vez de separar clases, buscan la función que mejor se ajusta a los datos.
+    Las \textbf{Máquinas de Vectores de Soporte} (\textit{Support Vector Machines}, SVM) nacieron para \textbf{clasificar}: separan dos grupos con la mejor frontera. También sirven para \textbf{regresión}: buscan la función que mejor sigue a los datos.
     \medskip
 
     \begin{itemize}
-        \item Se define un \textbf{tubo} de ancho $\varepsilon$ alrededor de la función ajustada.
-        \item Los puntos que caen \textbf{dentro} del tubo no penalizan al modelo (se toleran como ruido normal).
-        \item Los puntos que quedan \textbf{fuera} del tubo son los que realmente definen la forma de la función: se llaman \textbf{vectores de soporte}.
+        \item El modelo define un \textbf{tubo} de ancho $\varepsilon$ alrededor de la función.
+        \item Los puntos \textbf{dentro} del tubo no generan error. El modelo los trata como ruido normal.
+        \item Los puntos \textbf{fuera} del tubo definen la forma de la función. Son los \textbf{vectores de soporte}.
     \end{itemize}
     \medskip
     \begin{alertblock}{Nota sobre el nombre}
-        En tareas de regresión, esta técnica a veces se llama \textit{Support Vector Regression} (SVR). El artículo de Kurt la llama \textbf{SVM}, y esta presentación mantiene ese nombre por consistencia con la fuente.
+        En regresión, el nombre usual es SVR (\textit{Support Vector Regression}). El artículo usa SVM, y esta presentación también.
     \end{alertblock}
 \end{frame}
 
@@ -245,31 +249,38 @@
         \column{5.6cm}
         \footnotesize
         \begin{itemize}
-            \item \textbf{Puntos negros}: dentro del tubo $\pm\varepsilon$, no penalizan.
-            \item \textbf{Círculos rojos}: fuera del tubo, son los \textbf{vectores de soporte} que ``sostienen'' la forma de la función.
-            \item Si los datos no son lineales, se usa una \textbf{función kernel} para proyectarlos a un espacio donde sí lo sean (\textit{kernel trick}).
+            \item \textbf{Puntos negros}: están dentro del tubo $\pm\varepsilon$. No generan error.
+            \item \textbf{Círculos rojos}: están fuera del tubo. Son los \textbf{vectores de soporte}.
+            \item Si la relación no es lineal, una \textbf{función kernel} lleva los datos a un espacio donde sí es lineal (\textit{kernel trick}).
         \end{itemize}
-        \footnotesize\textit{Esquema ilustrativo.} El artículo probó \textit{kernels} \textbf{lineal}, \textbf{cuadrático} y \textbf{cúbico}.
+        \footnotesize\textit{Esquema ilustrativo.} El artículo prueba los \textit{kernels} \textbf{lineal}, \textbf{cuadrático} y \textbf{cúbico}.
     \end{columns}
 \end{frame}
 
 \begin{frame}{SVM: estructura del modelo usado en el artículo}
-    \small Ecuación general del método con \textit{kernel} (Ec.~4): $\; y = (K_{xi} * W_{jk}) + b$, donde $K_{xi}$ es la función \textit{kernel} no lineal aplicada a la entrada, $W_{jk}$ el vector de pesos y $b$ el sesgo (\textit{bias}).
-    \bigskip
+    \small Ecuación del modelo con \textit{kernel} (Ec.~4): $\; y = (K_{xi} * W_{jk}) + b$
+    \begin{itemize}
+        \item $K_{xi}$: función \textit{kernel} aplicada a la entrada.
+        \item $W_{jk}$: vector de pesos.
+        \item $b$: sesgo (\textit{bias}).
+    \end{itemize}
 
     \begin{center}
-    \begin{tikzpicture}[node distance=2pt, every node/.style={font=\tiny}]
-        \node[cajai, minimum height=0.5cm, text width=1.9cm] (in1) {Tipo de motor};
-        \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in1] (in2) {Bypass ratio};
-        \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in2] (in3) {Press ratio};
-        \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in3] (in4) {Rated output};
-        \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in4] (in5) {Ambient baro};
-        \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in5] (in6) {Ambient temp};
-        \node[cajai, minimum height=0.5cm, text width=1.9cm, below=of in6] (in7) {Ambient hum.};
-        \node[cajad, text width=1.7cm, minimum height=1.6cm, right=2.2cm of in4, font=\tiny\bfseries] (ker) {Vector soporte + \textit{kernel}};
-        \node[cajad, text width=1.9cm, minimum height=1.0cm, right=1.6cm of ker, font=\tiny\bfseries] (out) {Fuel flow T/O predicho};
-        \foreach \i in {1,...,7}{ \draw[flecha] (in\i.east) -- ($(ker.north west)!{(\i-0.5)/7}!(ker.south west)$); }
-        \draw[flecha] (ker) -- (out);
+    \begin{tikzpicture}[node distance=3pt]
+        \foreach \t [count=\i] in {Tipo de motor, Bypass ratio, Press ratio, Rated output, Ambient baro, Ambient temp, Ambient hum.}{
+            \ifnum\i=1
+                \node[cajai, minimum height=0.45cm, text width=2.0cm, font=\scriptsize] (in\i) {\t};
+            \else
+                \pgfmathtruncatemacro{\prev}{\i-1}
+                \node[cajai, minimum height=0.45cm, text width=2.0cm, font=\scriptsize, below=of in\prev] (in\i) {\t};
+            \fi
+        }
+        \node[rectangle, rounded corners, draw=suda, thick, fill=suda, inner sep=0pt,
+              fit={($(in1.north east)+(1.3cm,0)$) ($(in7.south east)+(3.4cm,0)$)}] (kerbox) {};
+        \node[font=\scriptsize\bfseries, text=white, align=center, text width=1.8cm] at (kerbox.center) {Vector soporte + \textit{kernel}};
+        \node[cajad, text width=2.0cm, minimum height=1.0cm, right=1.2cm of kerbox, font=\scriptsize\bfseries] (out) {Fuel flow T/O predicho};
+        \foreach \i in {1,...,7}{ \draw[flecha] (in\i.east) -- (in\i.east -| kerbox.west); }
+        \draw[flecha] (kerbox.east |- out) -- (out);
     \end{tikzpicture}
     \end{center}
 \end{frame}
@@ -278,70 +289,79 @@
 
 \begin{frame}{MLP: la neurona artificial y la red}
     \justifying
-    El \textbf{Perceptrón Multicapa} (\textit{Multilayer Perceptron}, MLP) es un tipo de \textbf{red neuronal artificial}, inspirada (de forma muy simplificada) en cómo se conectan las neuronas biológicas.
+    El \textbf{Perceptrón Multicapa} (\textit{Multilayer Perceptron}, MLP) es una \textbf{red neuronal artificial}. Su estructura imita, de forma simple, las conexiones entre neuronas biológicas.
 
     \begin{itemize}
-        \item Cada \textbf{neurona artificial} recibe varias entradas, las multiplica por \textbf{pesos}, las suma, y aplica una \textbf{función de activación} no lineal (p. ej. \textit{tansig}, \textit{logsig}, \textit{purelin}).
-        \item Las neuronas se organizan en \textbf{capas}: capa de entrada, una o más capas \textbf{ocultas}, y capa de salida.
-        \item El modelo \textbf{aprende} ajustando los pesos mediante \textbf{retropropagación} (\textit{backpropagation}): compara la predicción con el valor real y corrige los pesos hacia atrás, capa por capa.
+        \item Cada \textbf{neurona} multiplica sus entradas por \textbf{pesos}, las suma y aplica una \textbf{función de activación} (p.~ej. \textit{tansig}, \textit{logsig}, \textit{purelin}).
+        \item Las neuronas forman \textbf{capas}: una capa de entrada, una o más capas \textbf{ocultas} y una capa de salida.
+        \item El modelo \textbf{aprende} con \textbf{retropropagación} (\textit{backpropagation}): compara la predicción con el valor real y corrige los pesos desde la salida hacia la entrada.
     \end{itemize}
 \end{frame}
 
 \begin{frame}{MLP: arquitectura usada en el artículo}
     \begin{center}
-    \begin{tikzpicture}[scale=0.72, every node/.style={scale=0.72}]
-        \def\dy{0.78}
-        \foreach \y in {1,...,7}{ \node[neurona] (i\y) at (0,{3*\dy-(\y-1)*\dy}) {}; }
-        \node[font=\tiny, align=center] at (0,-3.6) {Entrada\\(7)};
-        \foreach \y in {1,...,4}{ \node[neurona] (h1\y) at (2.3,{1.5*\dy-(\y-1)*\dy}) {}; }
-        \node[font=\tiny, align=center] at (2.3,-3.6) {Ocultas\\(10-8-4-3)};
-        \foreach \y in {1,...,3}{ \node[neurona] (h2\y) at (4.2,{1*\dy-(\y-1)*\dy}) {}; }
-        \foreach \y in {1,...,2}{ \node[neurona] (h3\y) at (6.1,{0.5*\dy-(\y-1)*\dy}) {}; }
-        \node[neuronaout] (o) at (8.0,0) {};
-        \node[font=\tiny, align=center] at (8.0,-3.6) {Salida\\(1)};
-        \foreach \a in {1,...,7}{ \foreach \b in {1,...,4}{ \draw[gray,thin] (i\a) -- (h1\b); } }
-        \foreach \a in {1,...,4}{ \foreach \b in {1,...,3}{ \draw[gray,thin] (h1\a) -- (h2\b); } }
-        \foreach \a in {1,...,3}{ \foreach \b in {1,...,2}{ \draw[gray,thin] (h2\a) -- (h3\b); } }
-        \foreach \a in {1,...,2}{ \draw[gray,thin] (h3\a) -- (o); }
+    \begin{tikzpicture}[x=1.9cm, y=0.36cm,
+        n/.style={circle, draw=suda, thick, fill=suda!12, minimum size=0.3cm, inner sep=0pt},
+        nout/.style={circle, draw=suda, thick, fill=suda, minimum size=0.36cm, inner sep=0pt}]
+        % capas: indice/numero de neuronas/etiqueta
+        \foreach \c/\k/\lab in {0/7/{Entrada\\(7)}, 1/10/{Oculta 1\\(10)}, 2/8/{Oculta 2\\(8)}, 3/4/{Oculta 3\\(4)}, 4/3/{Oculta 4\\(3)}, 5/1/{Salida\\(1)}}{
+            \foreach \j in {1,...,\k}{
+                \ifnum\c=5
+                    \node[nout] (L\c-\j) at (\c, {(\k+1)/2-\j}) {};
+                \else
+                    \node[n] (L\c-\j) at (\c, {(\k+1)/2-\j}) {};
+                \fi
+            }
+            \node[font=\small, align=center, anchor=north] at (\c, -5.0) {\lab};
+        }
+        \begin{scope}[on background layer]
+        \foreach \c/\k/\d/\m in {0/7/1/10, 1/10/2/8, 2/8/3/4, 3/4/4/3, 4/3/5/1}{
+            \foreach \a in {1,...,\k}{ \foreach \b in {1,...,\m}{ \draw[gray!60, very thin] (L\c-\a) -- (L\d-\b); } }
+        }
+        \end{scope}
     \end{tikzpicture}
     \end{center}
     \small
-    \textit{Esquema simplificado} de la red real (7 entradas $\to$ capas ocultas de tamaño 10, 8, 4 y 3 $\to$ 1 salida). Activaciones: \textit{tansig--logsig--tansig--purelin}. Entrenada con \textbf{trainlm} (Levenberg--Marquardt), y comparada con \textbf{trainrp} (retropropagación resiliente) y \textbf{traincgb} (gradiente conjugado con reinicios de Powell--Beale).
+    \begin{itemize}
+        \item Activaciones: \textit{tansig} -- \textit{logsig} -- \textit{tansig} -- \textit{purelin}.
+        \item Entrenamiento: \textbf{trainlm} (Levenberg--Marquardt). El artículo lo compara con \textbf{trainrp} (retropropagación resiliente) y \textbf{traincgb} (gradiente conjugado).
+    \end{itemize}
 \end{frame}
 
 \begin{frame}{Resumen: intuición de los tres métodos}
     \begin{table}
     \centering
-    \scalebox{0.72}{
-    \begin{tabular}{p{2.2cm}p{4.3cm}p{4.3cm}}
+    \scalebox{0.8}{
+    \begin{tabular}{p{1.6cm}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{4.3cm}}
         \toprule
-        Método & Idea central & Punto fuerte típico \\
+        Método & Idea central & Punto fuerte \\
         \midrule
-        \textbf{GPR} & Distribución sobre funciones; predicción + incertidumbre & Da bandas de confianza de forma natural \\
-        \textbf{SVM} & Tubo $\varepsilon$-insensible + vectores de soporte + \textit{kernel} & Robusto con pocos datos y ruido moderado \\
-        \textbf{MLP} & Capas de neuronas con pesos ajustados por \textit{backpropagation} & Captura relaciones muy no lineales y complejas \\
+        \textbf{GPR} & Distribución sobre funciones: da una predicción y su incertidumbre & Da bandas de incertidumbre de forma natural \\
+        \addlinespace
+        \textbf{SVM} & Tubo $\varepsilon$, vectores de soporte y \textit{kernel} & Funciona bien con pocos datos y ruido moderado \\
+        \addlinespace
+        \textbf{MLP} & Capas de neuronas con pesos ajustados por retropropagación & Modela relaciones muy no lineales \\
         \bottomrule
     \end{tabular}}
     \end{table}
     \bigskip
-    \centering\small Los tres se entrenaron y compararon \textbf{con exactamente los mismos datos} para que la comparación sea justa.
+    \centering\small Los tres modelos usan \textbf{los mismos datos}. Así la comparación es justa.
 \end{frame}
 
 %============================================================
 \section{Metodología del estudio}
 %============================================================
 
-\begin{frame}{Fuente de datos: el EEDB en dos cortes temporales}
+\begin{frame}{Fuente de datos: dos ediciones del EEDB}
     \justifying\small
-    Se usaron dos extractos del EEDB:
+    El estudio usa dos ediciones del EEDB:
     \begin{itemize}
-        \item \textbf{EEDB-09/2019}: 565 registros $\rightarrow$ se usa para \textbf{entrenar, validar y probar} los tres modelos.
-        \item \textbf{EEDB-07/2021}: 773 registros $\rightarrow$ se usa \textbf{solo al final}, para comprobar que el mejor modelo generaliza a datos nuevos.
+        \item \textbf{EEDB-09/2019}: 565 registros. Sirven para \textbf{entrenar, validar y probar} los tres modelos.
+        \item \textbf{EEDB-07/2021}: 773 registros. Sirven \textbf{solo al final}, para probar el mejor modelo con datos nuevos.
     \end{itemize}
-    \bigskip
     \begin{table}
     \centering
-    \caption{Estadísticos descriptivos de las variables (Tablas 4 y 5 del artículo)}
+    \caption{Estadísticos descriptivos (Tablas 4 y 5 del artículo). En rojo: valores físicamente imposibles.}
     \scalebox{0.58}{
     \begin{tabular}{lcccccccc}
         \toprule
@@ -352,7 +372,8 @@
         Bypass ratio & 0.64 & 12.72 & 6.1787 & 2.3911 & 0.00 & 12.72 & 6.5978 & 2.6412 \\
         Press ratio & 9.76 & 49.40 & 30.4341 & 8.3014 & 9.76 & 49.60 & 31.3034 & 8.5283 \\
         Rated output (kN) & 9.79 & 513.90 & 189.7491 & 116.318 & 9.79 & 513.90 & 186.5325 & 118.293 \\
-        Ambient temp (K) & 144.0 & 308.50 & 286.9116 & 10.306 & 226.5 & 308.50 & 287.1879 & 8.146 \\
+        Ambient baro (kPa) & \textcolor{suda}{\textbf{0.00}} & \textcolor{suda}{\textbf{1\,019\,394.5}} & \textcolor{suda}{8004.3} & \textcolor{suda}{85\,867.4} & 95.15 & 103.45 & 99.4889 & 1.6766 \\
+        Ambient temp (K) & \textcolor{suda}{\textbf{144.0}} & 308.50 & 286.9116 & 10.306 & 226.5 & 308.50 & 287.1879 & 8.146 \\
         Ambient humidity & 0.00 & 0.02 & 0.0069 & 0.0037 & 0.00 & 0.04 & 0.0070 & 0.0038 \\
         \textbf{Fuel flow T/O} & 0.15 & 4.69 & 1.7095 & 0.9479 & 0.15 & 4.69 & 1.6410 & 0.9635 \\
         \bottomrule
@@ -362,15 +383,15 @@
 
 \begin{frame}{Selección de variables de entrada}
     \justifying\small
-    Antes de entrenar los modelos de ML, el autor hizo un \textbf{análisis de regresión múltiple} para confirmar cuáles variables realmente influyen en el \textit{fuel flow T/O}.
+    Antes de entrenar los modelos, el autor hace una \textbf{regresión lineal múltiple}. La regresión indica qué variables influyen en el \textit{fuel flow T/O}.
     \bigskip
 
     \begin{columns}[c]
     \column{5.6cm}
-    \begin{block}{Resultado del análisis (Tablas 7 y 8)}
+    \begin{block}{Resultado (Tablas 7 y 8)}
         \begin{itemize}
-            \item $R = 0.990$, $R^2 = 0.979$ (el modelo explica el 97.9\% de la variación),
-            \item Prueba ANOVA: Sig. $= 0.000 < 0.001$ $\Rightarrow$ el modelo es \textbf{altamente significativo}.
+            \item $R = 0.990$ y $R^2 = 0.979$: el modelo explica el 97.9\,\% de la variación.
+            \item ANOVA: Sig. $= 0.000 < 0.001$. El modelo completo es \textbf{altamente significativo}.
         \end{itemize}
     \end{block}
     \column{5.6cm}
@@ -379,21 +400,60 @@
     \end{alertblock}
     \end{columns}
     \bigskip
-    Estas 7 variables son las que después alimentan a GPR, SVM y MLP como entradas (ver diagramas de las Figuras~4 y~5 del artículo).
+    Las 7 variables son las entradas de GPR, SVM y MLP (Figuras~4 y~5 del artículo).
+\end{frame}
+
+\begin{frame}{Resultados atípicos en los datos y en las pruebas}
+    \justifying\small
+    Tres de las 7 variables tienen resultados atípicos:
+    \begin{table}
+    \centering
+    \scalebox{0.78}{
+    \begin{tabular}{p{2.2cm}p{7.6cm}l}
+        \toprule
+        Variable & Resultado atípico & Fuente \\
+        \midrule
+        \textit{Press ratio} & Sig. $= 0.963$ ($t=-0.046$). Por sí sola, la variable \textbf{no es significativa}. & Tabla 9 \\
+        \addlinespace
+        \textit{Ambient baro} & Mín. $= 0.00$ y máx. $= 1\,019\,394.5$. La presión real a nivel del suelo está entre 95 y 104~kPa. & Tabla 4 \\
+        \addlinespace
+        \textit{Ambient temp} & Mín. $= 144$~K ($-129$~°C). El EEDB registra 288~K para ese motor (4AL002): el valor está dividido entre 2. & Tablas 4 y 6 \\
+        \bottomrule
+    \end{tabular}}
+    \end{table}
+    \medskip
+    \footnotesize Además, la Tabla 9 publica $\beta=-0.49$ para el tipo de motor, con error típico 0.017 y $t=-2.962$. Estos dos valores dan $\beta = -0.049$: el $-0.49$ es un error de un factor 10.
+\end{frame}
+
+\begin{frame}{¿Por qué conservar las 7 variables?}
+    \justifying\small
+    El artículo no justifica esta decisión. Hay tres razones técnicas que la apoyan:
+    \begin{enumerate}
+        \item La regresión lineal solo mide efectos \textbf{lineales}. \textit{Press ratio} no tiene efecto lineal propio, pero puede aportar información a un modelo no lineal (GPR, SVM, MLP).
+        \item La prueba ANOVA evalúa el \textbf{conjunto} de variables, no cada variable sola. El conjunto es significativo (Sig. $< 0.001$).
+        \item Las 7 variables son parámetros físicos del motor y del ensayo de certificación. Todas tienen sentido físico para el consumo de combustible.
+    \end{enumerate}
+    \begin{alertblock}{Límite de confiabilidad}
+        El artículo no limpia los valores atípicos ni prueba los modelos sin \textit{press ratio}. En la réplica de este proyecto, con los datos corregidos del EEDB, la regresión da el mismo resultado: $R^2 = 0.980$ y $t \approx 0$ para \textit{press ratio}. Los valores atípicos no cambian la conclusión de la regresión.
+    \end{alertblock}
 \end{frame}
 
 \begin{frame}{La ecuación de regresión múltiple resultante}
     \small
     $$ y = \beta_0 + \beta_1 p_1 + \beta_2 p_2 + \cdots + \beta_n p_n + \epsilon \quad \text{(Ec.~1)} $$
-    Con los coeficientes estimados (Tabla 9), la ecuación queda (Ec.~2):
+    Con los coeficientes de la Tabla 9, la ecuación queda (Ec.~2):
     \begin{align*}
         \text{Fuel Flow } T/O = \ & 1.302 - 0.49 \times \text{tipo de motor} - 0.1 \times \text{bypass ratio} \\
         & - 7.308\times10^{-5} \times \text{press ratio} + 0.009 \times \text{rated output} \\
         & + 2.242\times10^{-7} \times \text{ambient baro} - 0.002 \times \text{ambient temp} \\
         & - 4.612 \times \text{ambient humidity}
     \end{align*}
-    \bigskip
-    \footnotesize\textbf{Lectura rápida de signos:} a mayor \textit{rated output} (motor más potente), mayor flujo de combustible ($\beta>0$); a mayor \textit{bypass ratio} (motores más eficientes/modernos), menor flujo de combustible ($\beta<0$). Esta regresión \textbf{no es} uno de los tres modelos de ML: solo sirvió para \textbf{validar} qué variables usar como entrada.
+    \footnotesize\textbf{Lectura de los signos:}
+    \begin{itemize}
+        \item Más \textit{rated output} (motor más potente) $\Rightarrow$ más flujo de combustible ($\beta>0$).
+        \item Más \textit{bypass ratio} (motor más eficiente) $\Rightarrow$ menos flujo de combustible ($\beta<0$).
+    \end{itemize}
+    Esta regresión \textbf{no es} uno de los tres modelos de ML. Solo sirve para elegir las entradas.
 \end{frame}
 
 \begin{frame}{Partición de datos y flujo general del estudio}
@@ -401,11 +461,11 @@
         \column{4.6cm}
         \small
         \begin{itemize}
-            \item \textbf{70\%} entrenamiento (395 registros),
-            \item \textbf{15\%} validación (85 registros),
-            \item \textbf{15\%} prueba (85 registros).
+            \item \textbf{70\,\%} entrenamiento (395 registros)
+            \item \textbf{15\,\%} validación (85 registros)
+            \item \textbf{15\,\%} prueba (85 registros)
         \end{itemize}
-        \footnotesize La partición es \textbf{la misma} para los tres modelos, para que la comparación final sea justa.
+        \footnotesize Los tres modelos usan \textbf{la misma} partición.
         \column{6.6cm}
         \begin{tikzpicture}[scale=0.68, every node/.style={scale=0.68}, node distance=0.3cm]
             \node[cajai, text width=2.4cm] (a) {EEDB \\ (ICAO)};
@@ -423,14 +483,14 @@
 
 \begin{frame}{Métricas para comparar los modelos}
     \justifying\small
-    Los tres modelos se comparan con las mismas tres métricas de error (más bajo = mejor), calculadas sobre $n$ observaciones, donde $FF_{T/O}$ es el valor real y $ff_{T/O}$ el valor predicho:
+    Los tres modelos se comparan con tres métricas de error. Un valor menor es mejor. $n$ es el número de observaciones, $FF_{T/O}$ el valor real y $ff_{T/O}$ el valor predicho.
     \begin{align*}
         \text{MSE} &= \frac{1}{n}\sum_{i=1}^n (FF_{T/O} - ff_{T/O})^2 & \text{(Ec.~5, error cuadrático medio)}\\
         \text{MAE} &= \frac{1}{n}\sum_{i=1}^n |FF_{T/O} - ff_{T/O}| & \text{(Ec.~6, error absoluto medio)}\\
         \text{MAPE} &= \frac{100}{n}\sum_{i=1}^n \left| \frac{FF_{T/O} - ff_{T/O}}{FF_{T/O}} \right| & \text{(Ec.~7, error porcentual absoluto medio)}
     \end{align*}
     \begin{alertblock}{Criterio de calidad (Lewis, 1982)}
-        Un modelo con \textbf{MAPE $< 10\%$} se considera de \textbf{alta precisión}; los autores citan que valores por debajo de ese umbral se consideran un modelo ``muy bueno''.
+        Un modelo con \textbf{MAPE $< 10\,\%$} es un modelo ``muy bueno'' (de alta precisión).
     \end{alertblock}
 \end{frame}
 
@@ -442,7 +502,7 @@
 
 \begin{frame}{Resultados: GPR}
     \justifying\small
-    Se probaron 3 \textit{kernels}; se comparan por MSE en el conjunto de prueba (Tabla 10):
+    El artículo prueba 3 \textit{kernels} y los compara por el MSE en el conjunto de prueba (Tabla 10):
     \begin{table}
     \centering
     \scalebox{0.68}{
@@ -456,12 +516,15 @@
         \bottomrule
     \end{tabular}}
     \end{table}
-    \footnotesize Estructura del modelo ganador (Tabla 11): función base constante, escala de kernel automática, $\sigma=0.0096$, optimizador \textit{Quasi-Newton}. En entrenamiento llega a $R=1$ y MSE $\approx 1.3\times10^{-6}$: ajusta casi perfectamente los datos ya vistos, pero eso no garantiza que generalice igual de bien (por eso importan validación y prueba).
+    \footnotesize Modelo ganador (Tabla 11): función base constante, escala de \textit{kernel} automática, $\sigma=0.0096$, optimizador \textit{quasi-Newton}.
+    \medskip
+
+    En entrenamiento, el modelo logra $R=1$ y MSE $\approx 1.3\times10^{-6}$. Un ajuste casi perfecto a los datos ya vistos no garantiza un buen resultado con datos nuevos. Por eso importan la validación y la prueba.
 \end{frame}
 
 \begin{frame}{Resultados: SVM}
     \justifying\small
-    Se probaron 3 \textit{kernels}; se comparan por MSE en el conjunto de prueba (Tabla 12):
+    El artículo prueba 3 \textit{kernels} y los compara por el MSE en el conjunto de prueba (Tabla 12):
     \begin{table}
     \centering
     \scalebox{0.68}{
@@ -475,12 +538,15 @@
         \bottomrule
     \end{tabular}}
     \end{table}
-    \footnotesize Estructura del modelo ganador (Tabla 13): función polinomial, escala de kernel automática, restricción de caja (\textit{box constraint}) $=1.2076$, sesgo $=1.7458$, $\varepsilon=0.1208$ (ancho del tubo insensible). Nota: el SVM \textbf{cúbico} tuvo un desempeño muy pobre en validación ($R=0.489$), lo que muestra que un kernel más complejo no siempre generaliza mejor.
+    \footnotesize Modelo ganador (Tabla 13): función polinomial, escala de \textit{kernel} automática, restricción de caja (\textit{box constraint}) $=1.2076$, sesgo $=1.7458$, $\varepsilon=0.1208$ (ancho del tubo).
+    \medskip
+
+    El SVM \textbf{cúbico} tiene $R=0.489$ en validación. Un \textit{kernel} más complejo no siempre generaliza mejor.
 \end{frame}
 
 \begin{frame}{Resultados: MLP}
     \justifying\small
-    Se entrenaron 9 configuraciones con 3 algoritmos distintos; se muestran las más relevantes (Tabla 14, ordenadas por MSE de prueba):
+    El artículo entrena 9 configuraciones con 3 algoritmos. La tabla muestra las más relevantes (Tabla 14, ordenadas por MSE de prueba):
     \begin{table}
     \centering
     \scalebox{0.62}{
@@ -495,14 +561,14 @@
         \bottomrule
     \end{tabular}}
     \end{table}
-    \footnotesize Arquitectura ganadora (Tabla 15): 7 entradas $\to$ capas ocultas 10-8-4-3 $\to$ 1 salida, activaciones \textit{tansig-logsig-tansig-purelin}, entrenada con \textbf{trainlm} (Levenberg--Marquardt), sobre la misma partición 70/15/15\%.
+    \footnotesize Arquitectura ganadora (Tabla 15): 7 entradas $\to$ capas ocultas de 10, 8, 4 y 3 neuronas $\to$ 1 salida. Algoritmo: \textbf{trainlm} (Levenberg--Marquardt). Partición: 70/15/15\,\%.
 \end{frame}
 
-\begin{frame}{Comparación final: ¿cuál modelo gana?}
+\begin{frame}{Comparación final: ¿qué modelo gana?}
     \begin{center}
     \begin{tikzpicture}
     \begin{axis}[
-        width=10.8cm, height=5.6cm,
+        width=10.8cm, height=5.0cm,
         ybar, bar width=10pt,
         symbolic x coords={Entrenamiento,Validación,Prueba},
         xtick=data,
@@ -520,12 +586,12 @@
     \end{axis}
     \end{tikzpicture}
     \end{center}
-    \footnotesize Datos reales de la Tabla 16. GPR se ajusta casi perfectamente en entrenamiento pero pierde precisión en validación/prueba (señal de sobreajuste leve); \textbf{MLP} es el más equilibrado: mejor en validación y prueba, y todos sus MAPE quedan bajo 5\%.
+    \footnotesize Datos de la Tabla 16. GPR casi no tiene error en entrenamiento, pero sí en validación y prueba: es un signo de sobreajuste leve. El \textbf{MLP} es el más equilibrado: tiene el menor error en validación y prueba, y su MAPE es menor que 5\,\% en los tres conjuntos.
 \end{frame}
 
 \begin{frame}{Prueba de generalización con datos de 2021}
     \justifying\small
-    El mejor modelo global, el \textbf{MLP}, se volvió a evaluar —sin reentrenarlo— con 773 registros nuevos del EEDB-07/2021, que no participaron en el entrenamiento:
+    El autor evalúa de nuevo el \textbf{MLP} con los 773 registros del EEDB-07/2021. No reentrena el modelo.
     \begin{table}
     \centering
     \scalebox{0.75}{
@@ -540,18 +606,18 @@
     \end{table}
     \bigskip
     \begin{block}{Interpretación}
-        Con datos completamente nuevos, el MAPE apenas sube de 2.34\% a 2.90\%, muy por debajo del umbral de 10\%. Esto respalda que el modelo \textbf{generaliza bien} y no solo memorizó los datos de entrenamiento.
+        Con datos nuevos, el MAPE sube de 2.34\,\% a 2.90\,\%. El valor queda muy por debajo del umbral de 10\,\%. El modelo \textbf{generaliza bien}: no solo memoriza los datos de entrenamiento.
     \end{block}
 \end{frame}
 
 \begin{frame}{Intervalos de confianza para detectar degradación}
     \justifying\small
-    Con el MLP ya entrenado, se construye un intervalo de confianza al \textbf{99\%} alrededor de cada predicción (Ec.~8):
+    Con el MLP entrenado, el autor calcula un intervalo de confianza del \textbf{99\,\%} para cada predicción (Ec.~8):
     $$ ff_{T/O} - z_{\frac{\alpha}{2}}\frac{\sigma}{\sqrt{n}} < FF_{T/O} < ff_{T/O} + z_{\frac{\alpha}{2}}\frac{\sigma}{\sqrt{n}} $$
-    Con $z_{\frac{\alpha}{2}}=2.58$ para el 99\% de confianza (Tabla 18).
+    Para el 99\,\% de confianza, $z_{\frac{\alpha}{2}}=2.58$ (Tabla 18). $\sigma$ es la desviación estándar y $n$ el tamaño de la muestra.
     \begin{center}
     \begin{tikzpicture}
-    \begin{axis}[width=9.8cm, height=3.5cm, xlabel={muestra}, ylabel={fuel flow T/O}, legend style={font=\tiny, at={(0.5,-0.32)}, anchor=north, legend columns=2}]
+    \begin{axis}[width=9.8cm, height=3.0cm, xticklabels={}, ymin=0, ymax=2.8, ylabel={fuel flow T/O}, legend style={font=\tiny, at={(0.5,-0.2)}, anchor=north, legend columns=3}]
         \addplot[name path=up, suda, thick, domain=0:10, samples=40] {1.5+0.5*sin(deg(x))+0.35};
         \addplot[name path=lo, suda, thick, domain=0:10, samples=40] {1.5+0.5*sin(deg(x))-0.35};
         \addplot[suda!12] fill between[of=up and lo];
@@ -563,7 +629,7 @@
     \end{axis}
     \end{tikzpicture}
     \end{center}
-    \footnotesize\textit{Esquema ilustrativo} (no son los datos reales de las Figuras 10-11). Si el valor medido cae \textbf{dentro} de la banda, el motor se considera normal; si cae \textbf{fuera}, se marca como posible anomalía de desempeño.
+    \footnotesize\textit{Esquema ilustrativo}, no son los datos de las Figuras 10 y 11. Si el valor medido cae \textbf{dentro} de la banda, el motor funciona normal. Si cae \textbf{fuera}, el modelo marca una posible degradación.
 \end{frame}
 
 %============================================================
@@ -573,43 +639,45 @@
 \begin{frame}{Hallazgos principales}
     \justifying
     \begin{itemize}
-        \item El \textbf{MLP} (modelo 1, entrenado con \textit{trainlm}) fue el mejor modelo global: mejor desempeño en validación y prueba, con MAPE $<5\%$ en todos los conjuntos.
-        \item El \textbf{GPR exponencial} logró el mejor ajuste en entrenamiento, pero con más error en validación/prueba que el MLP.
-        \item El \textbf{SVM cuadrático} fue el mejor de los tres \textit{kernels} de SVM, pero tuvo los errores más altos de los tres modelos finalistas.
-        \item El MLP \textbf{generalizó bien} a datos de un año distinto (2021), con MAPE de solo 2.90\%.
-        \item Se construyó un sistema de \textbf{intervalos de confianza (99\%)} que permite señalar posibles degradaciones sin desarmar el motor.
+        \item El \textbf{MLP} (modelo 1, \textit{trainlm}) es el mejor modelo global. Tiene el menor error en validación y prueba, y un MAPE menor que 5\,\% en todos los conjuntos.
+        \item El \textbf{GPR exponencial} tiene el mejor ajuste en entrenamiento, pero más error que el MLP en validación y prueba.
+        \item El \textbf{SVM cuadrático} es el mejor de los tres SVM, pero tiene el mayor error de los tres modelos finales.
+        \item El MLP \textbf{generaliza bien} a los datos de 2021: MAPE de 2.90\,\%.
+        \item Los \textbf{intervalos de confianza del 99\,\%} señalan una posible degradación sin desmontar el motor.
     \end{itemize}
 \end{frame}
 
 \begin{frame}{Aporte práctico del estudio}
     \justifying
-    \begin{block}{¿Qué permite este modelo que antes no era posible?}
-        Evaluar el desempeño de un motor en el despegue \textbf{sin desmontarlo} y \textbf{sin requerir un experto}, usando solo datos ya disponibles en el EEDB.
+    \begin{block}{¿Qué permite este modelo?}
+        Evaluar el desempeño del motor en el despegue \textbf{sin desmontarlo} y \textbf{sin un experto}. Solo usa datos públicos del EEDB.
     \end{block}
     \bigskip
-    Esto puede ayudar a reducir:
+    El modelo puede ayudar a reducir:
     \begin{itemize}
-        \item El consumo de combustible innecesario,
-        \item Los costos de mantenimiento (al detectar degradación temprano),
-        \item El costo total del vuelo,
-        \item El riesgo de accidentes asociado a fallas no detectadas,
-        \item Las emisiones contaminantes de la aviación.
+        \item El consumo de combustible,
+        \item Los costos de mantenimiento, porque detecta la degradación a tiempo,
+        \item El costo del vuelo,
+        \item El riesgo de accidentes por fallas no detectadas,
+        \item Las emisiones contaminantes.
     \end{itemize}
 \end{frame}
 
 \begin{frame}{Discusión crítica (reflexión propia)}
     \justifying\small
     \begin{alertblock}{Fortalezas}
-        Comparación rigurosa y transparente de 3 familias de modelos con la misma partición de datos; validación real con un segundo dataset (2021); uso de intervalos de confianza con una interpretación práctica clara.
+        Compara 3 tipos de modelos con la misma partición. Prueba el mejor modelo con datos de 2021. Los intervalos de confianza son fáciles de interpretar.
     \end{alertblock}
     \begin{block}{Puntos a considerar}
+        \footnotesize
         \begin{itemize}
-            \item Los datos provienen de una \textbf{única fuente institucional} (EEDB/ICAO); no se prueba con datos de otras bases o de vuelo real (FDR).
-            \item La validación de generalización usa un solo año adicional (2021), de la misma base de datos.
-            \item No se comparan con modelos de \textit{deep learning} más recientes (p. ej. redes profundas, \textit{ensembles}), que otros trabajos de la Tabla 3 sí exploran.
+            \item Todos los datos vienen de \textbf{una sola fuente} (EEDB/ICAO). El estudio no usa datos de vuelo real (FDR).
+            \item La prueba de generalización usa solo un año más (2021) de la misma base.
+            \item Los datos de 2019 tienen \textbf{valores atípicos} de presión y temperatura ambiente. El artículo no los corrige.
+            \item El estudio no compara con modelos más recientes, como redes profundas o ensambles (\textit{ensembles}).
         \end{itemize}
     \end{block}
-    \footnotesize Estos puntos no invalidan el estudio; son posibles líneas de trabajo futuro.
+    \footnotesize Estos puntos no invalidan el estudio. Son líneas de trabajo futuro.
 \end{frame}
 
 \begin{frame}{Referencias clave}
