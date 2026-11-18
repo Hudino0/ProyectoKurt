@@ -1,0 +1,23 @@
+\chapter{Objetivos}
+
+\section{Objetivo General}
+
+Desarrollar y validar un modelo basado en m\'etodos de aprendizaje autom\'atico para evaluar el rendimiento de los motores de aeronaves durante la fase de despegue, utilizando los conjuntos de datos de la base de datos de emisiones de motores de la OACI (EEDB 2019 y 2021), con el fin de predecir el par\'ametro de flujo de combustible (\textit{Fuel Flow T/O}) y detectar deterioros en el rendimiento sin necesidad de c\'alculos matem\'aticos complejos ni intervenci\'on de conocimientos expertos.
+
+\section{Objetivos Particulares}
+
+Se establecen los siguientes objetivos espec\'ificos derivados del objetivo general:
+
+\begin{itemize}
+    \item \textbf{Analizar y preprocesar los datos:} Extraer y organizar los conjuntos de datos EEDB (2019 y 2021) proporcionados por la OACI, identificando las variables de entrada que afectan de manera significativa el flujo de combustible (humedad ambiental, tipo de motor, presi\'on ambiental, potencia nominal, temperatura ambiental, relaci\'on de derivaci\'on y relaci\'on de presi\'on).
+
+    \item \textbf{Modelar mediante aprendizaje autom\'atico:} Entrenar modelos de Regresi\'on de Procesos Gaussianos (GPR), M\'aquinas de Vectores de Soporte (SVM) y Perceptrones Multicapa (MLP) para estimar el par\'ametro \textit{Fuel Flow T/O} durante la fase de despegue.
+
+    \item \textbf{Evaluar y comparar el desempe~no de los modelos:} Determinar la precisi\'on de cada modelo utilizando cr\'iterios de rendimiento de error, espec\'ificamente el Error Cuadr\'atico Medio (MSE), el Error Absoluto Medio (MAE) y Error Porcentual Absoluto Medio (MAPE), para seleccionar la arquitectura que ofrezca la mayor fiabilidad predictiva.
+
+    \item \textbf{Establecer intervalos de confianza:} Calcular los l\'imites superior e inferior de un intervalo de confianza del 99 \% utilizando las predicciones del mejor modelo seleccionado, con el prop\'osito de definir los umbrales de operaci\'on normal del motor.
+
+    \item \textbf{Validar la detecci\'on de anomal\'ias:} Aplicar el modelo y los intervalos de confianza desarrollados a los datos de prueba para demostrar que es posible detectar el deterioro del rendimiento del motor (valores fuera del intervalo de confianza) de forma aut\'onoma.
+
+    \item \textbf{Demostrar el impacto operativo y ambiental:} Evidenciar c\'omo la implementaci\'on de este modelo contribuye a los objetivos de la OACI, permitiendo la reducci\'on del consumo de combustible, los costos de mantenimiento, el riesgo de accidentes y las emisiones contaminantes derivadas de un motor con rendimiento degradado.
+\end{itemize}

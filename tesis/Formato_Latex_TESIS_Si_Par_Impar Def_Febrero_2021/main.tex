@@ -1,0 +1,97 @@
+\documentclass[12pt,letterpaper]{book}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.9]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[left=2.5cm,right=2.5cm,top=2.5cm,bottom=3.5cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{multirow,array}
+\usepackage{float}
+\usepackage[numbers]{natbib}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,filecolor=magenta,urlcolor=cyan,citecolor=blue,plainpages=false,hidelinks,breaklinks=true}
+\usepackage{fancyhdr}
+\fancyhf{}
+\graphicspath{{Imag/}}
+\setlength{\headheight}{50pt}
+\fancyhead[CE,CO]{\textbf{\leftmark}}
+\fancyfoot[CE,CO]{\thepage}
+\renewcommand{\headrulewidth}{2.0pt}
+\renewcommand{\footrulewidth}{2.0pt}
+\pagestyle{fancy}
+\spanishdecimal{.}
+\emergencystretch=1.5em
+\renewcommand{\listtablename}{\'Indice de tablas}
+\renewcommand{\tablename}{Tabla}
+\renewcommand{\thechapter}{\arabic{chapter}}
+\renewcommand{\thesection}{\thechapter.\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+
+\lstset{basicstyle=\ttfamily\small,breaklines=true,frame=single,numbers=left,numbersep=5pt,keywordstyle=\color{blue},commentstyle=\color{gray}}
+
+\begin{document}
+\frontmatter
+\thispagestyle{empty}
+
+% PORTADA
+\input{Docs/00_Portada_Maestria}
+
+% DEDICATORIA
+\input{Docs/01_Dedicatoria}
+
+% AGRADECIMIENTOS
+\input{Docs/02_Agradecimientos}
+
+% RESUMEN
+\input{Docs/03_Resumen}
+
+% ABSTRACT
+\input{Docs/04_Abstract}
+
+% GLOSARIO
+\input{Docs/05_Glosario}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\mainmatter
+\pagenumbering{arabic}
+
+% INTRODUCCION
+\input{Docs/1_Capitulo}
+
+% ESTADO DEL ARTE
+\input{Docs/2_Capitulo}
+
+% MARCO TEORICO
+\input{Docs/3_MarcoTeorico}
+
+% HIPOTESIS
+\input{Docs/4_Hipotesis}
+
+% OBJETIVOS
+\input{Docs/5_Objetivos}
+
+% METODOLOGIA
+\input{Docs/5_Metodologia}
+
+% RESULTADOS
+\input{Docs/6_Resultados}
+
+% CONCLUSIONES
+\input{Docs/7_Conclusiones}
+
+% TRABAJOS FUTUROS
+\input{Docs/8_T_futuros}
+
+% BIBLIOGRAFIA
+\bibliographystyle{IEEEtranN}
+\bibliography{bibliografia}
+
+\end{document}
