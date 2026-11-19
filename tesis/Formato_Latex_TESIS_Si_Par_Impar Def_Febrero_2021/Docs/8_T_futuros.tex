@@ -1,0 +1,11 @@
+\chapter{Trabajos futuros}
+
+Este trabajo abre varias líneas de investigación:
+
+\begin{itemize}
+    \item Evaluar el modelo con ediciones nuevas del EEDB. El informe \texttt{REPLICACION.md} ya incluye evidencia sobre las ediciones 2023, 2025 y 2026. Una extensión natural es repetir el análisis con cada edición vigente y comparar la estabilidad de las métricas.
+    \item Validar el modelo con datos de vuelo real. El EEDB contiene datos de certificación. Los registros de un sistema de adquisición de datos de vuelo (FDR) o de un sistema de acceso rápido (QAR) permitirían comprobar el desempeño en operación.
+    \item Corregir y documentar los valores atípicos del EEDB. La presión barométrica y la temperatura ambiente de la edición 2019 contienen valores imposibles. Un estudio de sensibilidad puede comparar los modelos con y sin estas variables.
+    \item Comparar los tres modelos con técnicas más recientes, como redes profundas o métodos de conjunto (\textit{ensembles}). Esta comparación permitiría medir si la arquitectura MLP sigue siendo la mejor opción.
+    \item Extender el diagnóstico a otras fases del ciclo LTO, como el ascenso y la aproximación. El flujo de combustible de estas fases también aporta información sobre la degradación del motor.
+\end{itemize}

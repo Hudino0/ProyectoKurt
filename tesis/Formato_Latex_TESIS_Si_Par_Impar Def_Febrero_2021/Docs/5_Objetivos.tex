@@ -1,0 +1,23 @@
+\chapter{Objetivos}
+
+\section{Objetivo general}
+
+El objetivo general de este trabajo es desarrollar y validar un modelo de aprendizaje automático que evalúe el rendimiento de los motores de aeronaves durante la fase de despegue. El modelo usa los conjuntos de datos de la base de datos de emisiones de motores de la OACI (EEDB 2019 y 2021). El modelo predice el parámetro de flujo de combustible (\textit{Fuel Flow T/O}) y detecta deterioros de rendimiento sin cálculos matemáticos complejos y sin intervención de conocimientos expertos.
+
+\section{Objetivos específicos}
+
+El trabajo persigue los siguientes objetivos específicos:
+
+\begin{itemize}
+    \item \textbf{Analizar y preprocesar los datos:} El trabajo extrae y organiza los conjuntos de datos EEDB (2019 y 2021) de la OACI. También identifica las variables de entrada que afectan de forma significativa el flujo de combustible: humedad ambiental, tipo de motor, presión ambiental, potencia nominal, temperatura ambiental, relación de derivación y relación de presión.
+
+    \item \textbf{Modelar mediante aprendizaje automático:} El trabajo entrena modelos de Regresión de Procesos Gaussianos (GPR), Máquinas de Vectores de Soporte (SVM) y Perceptrones Multicapa (MLP). Los modelos estiman el parámetro \textit{Fuel Flow T/O} durante la fase de despegue.
+
+    \item \textbf{Evaluar y comparar el desempeño de los modelos:} El trabajo determina la precisión de cada modelo con el Error Cuadrático Medio (MSE), el Error Absoluto Medio (MAE) y el Error Porcentual Absoluto Medio (MAPE). Con estos criterios, selecciona la arquitectura con la mayor fiabilidad predictiva.
+
+    \item \textbf{Establecer intervalos de confianza:} El trabajo calcula los límites superior e inferior de un intervalo de confianza del 99\% a partir de las predicciones del mejor modelo. El intervalo define los umbrales de operación normal del motor.
+
+    \item \textbf{Validar la detección de anomalías:} El trabajo aplica el modelo y los intervalos de confianza a los datos de prueba. El objetivo es demostrar que el sistema detecta el deterioro del rendimiento del motor de forma autónoma. Un valor fuera del intervalo de confianza indica una posible anomalía.
+
+    \item \textbf{Demostrar el impacto operativo y ambiental:} El trabajo muestra cómo la implementación del modelo contribuye a los objetivos de la OACI. La detección temprana reduce el consumo de combustible, los costos de mantenimiento, el riesgo de accidentes y las emisiones contaminantes de un motor con rendimiento degradado.
+\end{itemize}

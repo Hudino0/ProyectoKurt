@@ -1,0 +1,19 @@
+\thispagestyle{empty}
+
+\chapter{Introducción}
+
+\pagenumbering{arabic}
+
+El rendimiento de un motor de aeronave disminuye con el uso. El ensuciamiento de los álabes (\textit{fouling}), la erosión, la corrosión y el desgaste mecánico reducen la eficiencia del motor. Esta pérdida de eficiencia aumenta el consumo de combustible, el costo de mantenimiento y las emisiones contaminantes.
+
+La fase de despegue es crítica. En esta fase, el motor alcanza su empuje máximo. Cualquier pérdida de rendimiento se refleja con claridad en el flujo de combustible (\textit{Fuel Flow T/O}). Este parámetro influye en el costo, en las emisiones y en la necesidad de mantenimiento.
+
+La Organización de Aviación Civil Internacional (ICAO) certifica los motores turbofán y turborreactor con el ciclo de aterrizaje y despegue (\textit{Landing and Take-Off}, LTO). Los resultados de estas mediciones se guardan en el \textit{ICAO Engine Emission Databank} (EEDB). Para cada motor certificado, el EEDB registra variables de diseño (tipo de motor, relación de derivación, relación de presión y empuje nominal), condiciones ambientales (presión barométrica, temperatura y humedad) y el flujo de combustible de cada régimen~\cite{Kurt2024}.
+
+El flujo de combustible en despegue es un indicador útil de desempeño. El despegue exige la mayor carga térmica y mecánica del ciclo. Por esta razón, una desviación respecto al valor esperado sugiere una pérdida de eficiencia. El problema se plantea como una regresión supervisada. El objetivo es estimar el \textit{Fuel Flow T/O} a partir de las variables de diseño y de las condiciones ambientales. Después, el trabajo compara el valor real del EEDB con el valor esperado por el modelo.
+
+Este trabajo compara tres métodos de aprendizaje automático: la Regresión por Procesos Gaussianos (GPR), las Máquinas de Vectores de Soporte (SVM) y el Perceptrón Multicapa (MLP). Los tres modelos usan los mismos datos y la misma partición. Esta condición hace que la comparación sea justa. El modelo con mejor generalización construye un intervalo de confianza del 99\%. El intervalo permite detectar un motor con posible deterioro sin desmontar el motor y sin requerir conocimiento experto.
+
+La detección temprana de la degradación tiene un impacto operativo y ambiental. Un motor degradado consume más combustible para el mismo empuje. También produce más emisiones y aumenta el riesgo de falla. Un diagnóstico automático ayuda a reducir estos costos y a programar el mantenimiento con anticipación.
+
+El documento presenta el marco teórico, la hipótesis, los objetivos y la metodología de la implementación. El marco teórico describe el ciclo LTO, el EEDB, la regresión lineal múltiple, los modelos GPR, SVM y MLP, las métricas de error y los intervalos de confianza. La metodología describe la implementación en Python con la librería \texttt{scikit-learn}. Los capítulos de resultados y conclusiones quedan pendientes de desarrollo.

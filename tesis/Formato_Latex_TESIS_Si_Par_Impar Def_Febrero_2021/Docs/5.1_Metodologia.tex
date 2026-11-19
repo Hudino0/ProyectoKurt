@@ -1,0 +1,309 @@
+\chapter{Metodología}
+
+\label{chap:implementacion}
+
+\section{Introducción}
+
+Este capítulo describe la implementación computacional que replica y adapta la metodología de Kurt~\cite{Kurt2024}. El artículo original usa MATLAB. Esta implementación usa Python y la librería \texttt{scikit-learn} para el entrenamiento y la evaluación de los modelos GPR, SVM y MLP.
+
+El conjunto de datos corresponde al \textit{ICAO Engine Emission Databank} (EEDB). El estudio usa las ediciones 2019 y 2021 (Sección~6.3). La variable objetivo es el parámetro \textbf{Fuel Flow T/O (kg/sec)}. Las siete variables de entrada son las identificadas en el marco teórico: tipo de motor, relación de derivación, relación de presión, empuje nominal, presión barométrica ambiente, temperatura ambiente y humedad ambiente.
+
+\section{Importación de librerías y configuración}
+
+El primer paso importa las librerías necesarias. El trabajo usa \texttt{numpy} y \texttt{pandas} para el manejo de datos, \texttt{matplotlib} para la visualización y \texttt{scikit-learn} para los modelos de aprendizaje automático. También fija la semilla aleatoria \texttt{RANDOM\_STATE = 42} para garantizar la reproducibilidad.
+
+\begin{lstlisting}[language=Python, caption={Importaciones y configuración inicial}, label={lst:imports}]
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import warnings
+warnings.filterwarnings('ignore')
+
+from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, RationalQuadratic, Matern
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+RANDOM_STATE = 42
+np.random.seed(RANDOM_STATE)
+\end{lstlisting}
+
+\section{Carga y preparación del conjunto de datos}
+
+El trabajo construye las variables de entrada con un proceso de ingeniería de características consistente con la metodología del artículo. La variable \texttt{Engine Type} se codifica de forma binaria: turbofán simple = 1 y turbofán mezclado (\textit{mixed turbofan}) = 2. Las variables ambientales (presión barométrica, temperatura y humedad) se calculan como el promedio entre sus valores mínimo y máximo. El artículo original reporta un único valor representativo para cada una.
+
+\begin{lstlisting}[language=Python, caption={Carga y preparación del conjunto de datos EEDB}, label={lst:dataset}]
+EXCEL_PATH = 'edb-emissions-databank_v31__web__0.xlsx'
+df_raw = pd.read_excel(EXCEL_PATH, sheet_name='Gaseous Emissions and Smoke')
+
+# Ingenieria de features segun el articulo
+df_raw['Engine_Type'] = df_raw['Eng Type'].apply(
+    lambda x: 1 if str(x).strip() == 'TF' else 2)
+
+df_raw['Ambient_Baro'] = (df_raw['Ambient Baro Min (kPa)']
+                           + df_raw['Ambient Baro Max (kPa)']) / 2
+df_raw['Ambient_Temp'] = (df_raw['Ambient Temp Min (K)']
+                           + df_raw['Ambient Temp Max (K)']) / 2
+df_raw['Ambient_Humidity'] = (df_raw['Humidity Min (kg/kg)']
+                               + df_raw['Humidity Max (kg/kg)']) / 2
+
+FEATURES = ['Engine_Type', 'B/P Ratio', 'Pressure Ratio', 'Rated Thrust (kN)',
+            'Ambient_Baro', 'Ambient_Temp', 'Ambient_Humidity']
+TARGET   = 'Fuel Flow T/O (kg/sec)'
+
+df = df_raw[FEATURES + [TARGET]].dropna().reset_index(drop=True)
+\end{lstlisting}
+
+\subsection{Número de motores usados}
+
+El artículo de referencia usa dos ediciones del EEDB. La edición 09/2019 contiene 565 registros. La edición 07/2021 contiene 773 registros. El artículo usa los 565 registros de 2019 para entrenar, validar y probar los tres modelos. Usa los 773 registros de 2021 solo al final, para probar el mejor modelo con datos nuevos. En total, el artículo usa 1\,338 registros (565 + 773).
+
+La implementación de \texttt{src/} reproduce estas dos ediciones. Después de excluir las filas incompletas, obtiene 563 registros para 2019 y 773 para 2021. En total, obtiene 1\,336 registros. La diferencia de dos registros en 2019 (0.4\%) proviene del criterio de exclusión de filas incompletas. Este resultado coincide con el artículo y con el informe \texttt{REPLICACION.md}.
+
+El bloque de código de esta sección usa la edición 31 (2025) del EEDB. Después de aplicar \texttt{dropna()}, esa edición deja 813 motores. Esa cifra no pertenece al conjunto del artículo. El bloque se conserva para mostrar el flujo de trabajo con \texttt{scikit-learn}, pero las tablas y las conclusiones de la tesis se refieren a las ediciones 2019 y 2021 que usa \texttt{src/}. Por lo tanto, el número correcto para el estudio es 565 + 773 = 1\,338 registros en el artículo, o 563 + 773 = 1\,336 registros en la réplica.
+
+\section{Análisis de regresión múltiple}
+
+Antes de entrenar los modelos de aprendizaje automático, el trabajo realiza un análisis de regresión lineal múltiple. El análisis verifica la relación estadística entre las variables de entrada y el parámetro objetivo. También replica el análisis de la Sección 2.2 del artículo de referencia.
+
+\begin{lstlisting}[language=Python, caption={Regresión lineal múltiple de referencia}, label={lst:regresion}]
+from sklearn.linear_model import LinearRegression
+
+X_reg = df[FEATURES].values
+y_reg = df[TARGET].values
+
+lr = LinearRegression()
+lr.fit(X_reg, y_reg)
+
+y_pred_lr = lr.predict(X_reg)
+r2 = 1 - np.sum((y_reg - y_pred_lr)**2) / np.sum((y_reg - y_reg.mean())**2)
+r  = np.sqrt(r2)
+\end{lstlisting}
+
+El coeficiente de correlación obtenido ($R$) confirma una relación lineal fuerte entre las variables seleccionadas y el \textit{Fuel Flow T/O}. Esta relación justifica el uso de las variables como entradas de los modelos no lineales posteriores.
+
+\subsection{Justificación de las siete variables de entrada}
+
+La regresión lineal múltiple muestra resultados atípicos en tres de las siete variables. Aun así, el trabajo conserva las siete variables. Los resultados atípicos son los siguientes:
+
+\begin{itemize}
+    \item \textit{Press ratio}: Sig. $= 0.963$ ($t = -0.046$). La variable no es significativa por sí sola (Tabla 9 del artículo).
+    \item \textit{Ambient baro}: mínimo $= 0.00$ y máximo $= 1\,019\,394.5$. La presión real a nivel del suelo está entre 95 y 104 kPa (Tabla 4 del artículo).
+    \item \textit{Ambient temp}: mínimo $= 144$ K ($-129$~$^{\circ}$C). El EEDB registra 288 K para el motor 4AL002. El valor publicado está dividido entre 2 (Tablas 4 y 6 del artículo).
+\end{itemize}
+
+La Tabla 9 del artículo también publica un valor $\beta = -0.49$ para el tipo de motor, con un error típico de 0.017 y $t = -2.962$. El cociente $-0.49/0.017$ no es $-2.962$. El valor coherente con el error típico y con el estadístico $t$ es $\beta = -0.049$. El valor $-0.49$ es un error de un factor 10. El informe \texttt{REPLICACION.md} documenta esta errata y la réplica obtiene $\beta = -0.053$.
+
+El trabajo conserva las siete variables por tres razones técnicas:
+
+\begin{enumerate}
+    \item La regresión lineal solo mide efectos lineales. \textit{Press ratio} no tiene un efecto lineal propio, pero puede aportar información a un modelo no lineal como GPR, SVM o MLP.
+    \item La prueba ANOVA evalúa el conjunto de variables, no cada variable por separado. El conjunto es significativo (Sig. $< 0.001$).
+    \item Las siete variables son parámetros físicos del motor y del ensayo de certificación. Todas tienen sentido físico para el consumo de combustible.
+\end{enumerate}
+
+El artículo no elimina los valores atípicos ni prueba los modelos sin \textit{press ratio}. Esta tesis conserva las siete variables para mantener la comparación con el artículo. Con los datos corregidos del EEDB, la regresión de la réplica da $R^2 = 0.980$ y $t \approx 0$ para \textit{press ratio}. Los valores atípicos no cambian la conclusión de la regresión.
+
+\section{División del conjunto de datos y normalización}
+
+El trabajo divide el conjunto de datos con el mismo esquema del artículo. La división usa tres subconjuntos: 70\% para entrenamiento, 15\% para validación y 15\% para prueba. También aplica una normalización estándar (\texttt{StandardScaler}). El escalador se ajusta solo sobre el conjunto de entrenamiento para evitar fuga de información (\textit{data leakage}) hacia los conjuntos de validación y prueba.
+
+\begin{lstlisting}[language=Python, caption={División del conjunto de datos y normalización}, label={lst:split}]
+X = df[FEATURES].values
+y = df[TARGET].values
+
+X_trainval, X_test, y_trainval, y_test = train_test_split(
+    X, y, test_size=0.15, random_state=RANDOM_STATE)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_trainval, y_trainval, test_size=0.15/0.85, random_state=RANDOM_STATE)
+
+scaler = StandardScaler()
+X_train_s = scaler.fit_transform(X_train)
+X_val_s   = scaler.transform(X_val)
+X_test_s  = scaler.transform(X_test)
+\end{lstlisting}
+
+\section{Métricas de evaluación}
+
+El trabajo usa una función auxiliar para comparar los modelos con un criterio uniforme. La función calcula las métricas de error del marco teórico: el coeficiente de correlación ($R$), el error cuadrático medio (MSE), el error absoluto medio (MAE) y el error porcentual absoluto medio (MAPE).
+
+\begin{lstlisting}[language=Python, caption={Función de cálculo de métricas de error}, label={lst:metricas}]
+def compute_metrics(y_true, y_pred):
+    mse  = mean_squared_error(y_true, y_pred)
+    mae  = mean_absolute_error(y_true, y_pred)
+    mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    r    = np.corrcoef(y_true, y_pred)[0, 1]
+    return dict(R=r, MSE=mse, MAE=mae, MAPE=mape)
+\end{lstlisting}
+
+Las métricas se calculan de forma independiente para los conjuntos de entrenamiento, validación y prueba. Esta separación permite identificar posibles casos de sobreajuste (\textit{overfitting}) cuando se compara el error entre subconjuntos.
+
+\section{Regresión por Procesos Gaussianos (GPR)}
+
+El primer modelo es la Regresión por Procesos Gaussianos. El trabajo prueba tres funciones de kernel equivalentes a las del artículo: el kernel exponencial (aproximado con un kernel de Matérn con $\nu = 0.5$), el kernel cuadrático racional y el kernel exponencial cuadrado (RBF).
+
+\begin{lstlisting}[language=Python, caption={Entrenamiento de los modelos GPR}, label={lst:gpr}]
+gpr_kernels = {
+    'Exponential GPR'        : Matern(nu=0.5),
+    'Rational Quadratic GPR' : RationalQuadratic(),
+    'Squared Exponential GPR': RBF(),
+}
+
+gpr_models  = {}
+gpr_metrics = {}
+
+for name, kernel in gpr_kernels.items():
+    gpr = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=5,
+                                    alpha=1e-6, random_state=RANDOM_STATE)
+    gpr.fit(X_train_s, y_train)
+    m_tr = compute_metrics(y_train, gpr.predict(X_train_s))
+    m_va = compute_metrics(y_val,   gpr.predict(X_val_s))
+    m_te = compute_metrics(y_test,  gpr.predict(X_test_s))
+    gpr_models[name]  = gpr
+    gpr_metrics[name] = {'train': m_tr, 'val': m_va, 'test': m_te}
+
+best_gpr = min(gpr_metrics, key=lambda k: gpr_metrics[k]['test']['MSE'])
+\end{lstlisting}
+
+El mejor modelo GPR es el que minimiza el MSE sobre el conjunto de prueba. El código lo selecciona de forma automática.
+
+\section{Máquinas de Vectores de Soporte (SVM)}
+
+El segundo modelo es una SVM para regresión. El trabajo evalúa tres variantes de kernel: lineal, cuadrático (polinomio de grado 2) y cúbico (polinomio de grado 3). Los hiperparámetros del SVM cuadrático (\texttt{C = 1.2076}, \texttt{epsilon = 0.1208}) se fijan con los valores estructurales de la Tabla~13 del artículo original.
+
+\begin{lstlisting}[language=Python, caption={Entrenamiento de los modelos SVM}, label={lst:svm}]
+svm_configs = {
+    'Linear SVM'   : SVR(kernel='linear', C=1.0, epsilon=0.1),
+    'Quadratic SVM': SVR(kernel='poly', degree=2, C=1.2076, epsilon=0.1208),
+    'Cubic SVM'    : SVR(kernel='poly', degree=3, C=1.0, epsilon=0.1),
+}
+
+svm_models  = {}
+svm_metrics = {}
+
+for name, svm in svm_configs.items():
+    svm.fit(X_train_s, y_train)
+    m_tr = compute_metrics(y_train, svm.predict(X_train_s))
+    m_va = compute_metrics(y_val,   svm.predict(X_val_s))
+    m_te = compute_metrics(y_test,  svm.predict(X_test_s))
+    svm_models[name]  = svm
+    svm_metrics[name] = {'train': m_tr, 'val': m_va, 'test': m_te}
+
+best_svm = min(svm_metrics, key=lambda k: svm_metrics[k]['test']['MSE'])
+\end{lstlisting}
+
+\section{Perceptrón Multicapa (MLP)}
+
+El tercer modelo replica la arquitectura de red neuronal del artículo (Figura~5 y Tabla~15). La arquitectura es 10-8-4-3 con funciones de activación \textit{tansig}/\textit{logsig}. \texttt{scikit-learn} no implementa de forma directa el algoritmo de entrenamiento Levenberg--Marquardt (\texttt{trainlm}) de MATLAB. Por esta razón, el trabajo lo aproxima con el solucionador \texttt{lbfgs}, un método cuasi-Newton de comportamiento equivalente para redes de tamaño moderado. De forma análoga, el algoritmo de retropropagación resiliente (\texttt{trainrp}) se aproxima con el solucionador \texttt{sgd} y una tasa de aprendizaje adaptativa.
+
+\begin{lstlisting}[language=Python, caption={Entrenamiento de los modelos MLP}, label={lst:mlp}]
+mlp_configs = [
+    ('Model 1 trainlm (10-8-4-3)', MLPRegressor(
+        hidden_layer_sizes=(10,8,4,3), activation='tanh', solver='lbfgs',
+        max_iter=3000, random_state=RANDOM_STATE)),
+    ('Model 2 trainlm (15-10-5)',   MLPRegressor(
+        hidden_layer_sizes=(15,10,5),  activation='tanh', solver='lbfgs',
+        max_iter=3000, random_state=RANDOM_STATE)),
+    ('Model 3 trainlm (20-10)',     MLPRegressor(
+        hidden_layer_sizes=(20,10),    activation='tanh', solver='lbfgs',
+        max_iter=3000, random_state=RANDOM_STATE)),
+    ('Model 4 trainrp (10-8-4-3)',  MLPRegressor(
+        hidden_layer_sizes=(10,8,4,3), activation='tanh', solver='sgd',
+        learning_rate='adaptive', max_iter=3000, random_state=RANDOM_STATE)),
+    ('Model 5 trainrp (15-10-5)',   MLPRegressor(
+        hidden_layer_sizes=(15,10,5),  activation='tanh', solver='sgd',
+        learning_rate='adaptive', max_iter=3000, random_state=RANDOM_STATE)),
+]
+
+mlp_models  = {}
+mlp_metrics = {}
+
+for name, mlp in mlp_configs:
+    mlp.fit(X_train_s, y_train)
+    m_tr = compute_metrics(y_train, mlp.predict(X_train_s))
+    m_va = compute_metrics(y_val,   mlp.predict(X_val_s))
+    m_te = compute_metrics(y_test,  mlp.predict(X_test_s))
+    mlp_models[name]  = mlp
+    mlp_metrics[name] = {'train': m_tr, 'val': m_va, 'test': m_te}
+
+best_mlp = min(mlp_metrics, key=lambda k: mlp_metrics[k]['test']['MSE'])
+\end{lstlisting}
+
+El trabajo evalúa cinco configuraciones. Las configuraciones varían la arquitectura de capas ocultas y el algoritmo de optimización. El objetivo es identificar la combinación que minimiza el error en el conjunto de prueba. El procedimiento es análogo a la comparación de la Tabla~14 del artículo.
+
+\section{Comparación de modelos}
+
+El trabajo selecciona el mejor modelo de cada familia (GPR, SVM y MLP) con el criterio de menor MSE en el conjunto de prueba. Después construye una tabla comparativa con las métricas MSE, MAE y MAPE para los tres conjuntos de datos (entrenamiento, validación y prueba). La tabla replica la estructura de la Tabla~16 del artículo original.
+
+\begin{lstlisting}[language=Python, caption={Comparación final entre modelos}, label={lst:comparacion}]
+rows = []
+for split_name, key in [('Train', 'train'), ('Val', 'val'), ('Test', 'test')]:
+    for model_label, met_dict in [
+        ('Exponential GPR', gpr_metrics[best_gpr]),
+        ('MLP (10-8-4-3)',   mlp_metrics[best_mlp]),
+        ('Linear SVM',       svm_metrics[best_svm]),
+    ]:
+        m = met_dict[key]
+        rows.append({'Split': split_name, 'Modelo': model_label,
+                     'MSE': m['MSE'], 'MAE': m['MAE'], 'MAPE': m['MAPE']})
+
+results_df = pd.DataFrame(rows)
+\end{lstlisting}
+
+El trabajo también genera una visualización comparativa del MAPE de los tres modelos en cada conjunto de datos. La gráfica incluye una línea de referencia en 10\%. Esta línea es el umbral que la literatura (clasificación de Lewis, 1982) considera como el límite superior para catalogar un modelo como de alta precisión.
+
+\section{Construcción de intervalos de confianza}
+
+El último paso implementa el mecanismo de diagnóstico de la Sección 3.5 del artículo. El trabajo calcula los residuos sobre la totalidad del conjunto de datos a partir de las predicciones del mejor modelo (el MLP). Después construye un intervalo de confianza al 99\% ($z_{0.005} = 2.58$), definido como:
+
+\begin{equation}
+\text{Fuel Flow}_{T/O} \pm z_{\alpha/2} \cdot \sigma
+\label{eq:intervalo_confianza}
+\end{equation}
+
+donde $\sigma$ es la desviación estándar de los residuos del modelo. Todo motor cuyo valor real de \textit{Fuel Flow T/O} quede fuera de este intervalo se marca como una posible anomalía de desempeño.
+
+\begin{lstlisting}[language=Python, caption={Cálculo de intervalos de confianza al 99\% y detección de anomalías}, label={lst:confianza}]
+best_model = mlp_models[best_mlp]
+
+X_all_s  = scaler.transform(X)
+ff_pred  = best_model.predict(X_all_s)
+
+z_99      = 2.58
+residuals = y - best_model.predict(X_all_s)
+sigma     = np.std(residuals)
+
+upper = ff_pred + z_99 * sigma
+lower = ff_pred - z_99 * sigma
+
+outliers = (y < lower) | (y > upper)
+\end{lstlisting}
+
+Este procedimiento es la aportación central del modelo. Permite evaluar de forma automática, sin cálculos manuales ni conocimiento experto, si el motor de una aeronave opera dentro de los parámetros esperados durante el despegue. También indica si el motor presenta indicios de deterioro de desempeño.
+
+\section{Resumen de la implementación}
+
+La Tabla~\ref{tab:resumen_implementacion} sintetiza la correspondencia entre las secciones del artículo original y los bloques implementados en este trabajo.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\caption{Correspondencia entre la metodología del artículo y la implementación desarrollada}
+\label{tab:resumen_implementacion}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{6.2cm}@{}}
+\toprule
+\textbf{Sección del artículo} & \textbf{Herramienta original (MATLAB)} & \textbf{Implementación (Python)} \\
+\midrule
+Regresión múltiple (2.2)     & \texttt{regress}                    & \texttt{LinearRegression} \\
+GPR (2.3.1 / 3.1)            & \textit{Regression Learner}          & \texttt{GaussianProcessRegressor} \\
+SVM (2.3.2 / 3.2)            & \textit{Regression Learner}          & \texttt{SVR} \\
+MLP (2.3.3 / 3.3)            & \textit{Neural Net Fitting}, \texttt{trainlm} & \texttt{MLPRegressor}, \texttt{solver='lbfgs'} \\
+Intervalos de confianza (3.5) & Cálculo manual ($z\sigma$)          & \texttt{numpy} (Ec.~\ref{eq:intervalo_confianza}) \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,268 @@
+\chapter{Marco Teórico}
+\label{chap:marco_teorico}
+
+\section{Introducción}
+
+El rendimiento de un motor de aeronave disminuye con el envejecimiento y con las condiciones extremas de operación. El ensuciamiento (\textit{fouling}), la erosión, la corrosión y la degradación mecánica son causas típicas de esta pérdida de eficiencia~\cite{Kurt2024}. La detección temprana es importante porque afecta el consumo de combustible, el costo de mantenimiento y las emisiones contaminantes.
+
+La fase de despegue (\textit{takeoff}) es crítica. En esta fase, el motor alcanza su régimen de empuje máximo (100\%). Una pérdida de rendimiento se manifiesta con claridad en el flujo de combustible. Este parámetro se traduce en costo, emisiones y necesidad de mantenimiento cuando no se detecta a tiempo.
+
+Este capítulo presenta los fundamentos del trabajo de Kurt~\cite{Kurt2024}. Primero describe el ciclo LTO y la base de datos EEDB. Después explica la regresión lineal múltiple y los tres modelos de aprendizaje automático: GPR, SVM y MLP. Al final presenta las métricas de error y el mecanismo de intervalos de confianza para la detección de anomalías.
+
+\section{El ciclo LTO y la base de datos EEDB}
+
+La Organización de Aviación Civil Internacional (ICAO) certifica los motores turbofán y turborreactor con el ciclo de aterrizaje y despegue (\textit{Landing and Take-Off}, LTO). El ciclo evalúa el motor en cuatro regímenes: despegue, aproximación, ascenso y rodaje o marcha en vacío. Cada régimen tiene un tiempo y un ajuste de empuje normalizados. Los resultados de estas mediciones se guardan de forma pública en el \textit{ICAO Engine Emission Databank} (EEDB). Para cada motor certificado, el EEDB reúne variables de diseño (tipo de motor, relación de derivación, relación de presión y empuje nominal), condiciones ambientales de la prueba (presión barométrica, temperatura y humedad) y el flujo de combustible medido en cada régimen~\cite{Kurt2024}.
+
+El flujo de combustible en despegue (\textit{Fuel Flow T/O}) es un indicador útil de desempeño. El despegue exige la mayor carga térmica y mecánica del ciclo. Por esta razón, cualquier desviación de este valor respecto a lo esperado para un motor de esas características sugiere una posible pérdida de eficiencia. Bajo esta premisa, el problema se plantea como una regresión supervisada. El objetivo es estimar el \textit{Fuel Flow T/O} a partir de las variables de diseño y de las condiciones ambientales. Después, el trabajo compara el valor real del EEDB con el valor esperado por el modelo.
+
+\section{Regresión lineal múltiple}
+\label{sec:regresion_multiple}
+
+Antes de usar modelos no lineales, el trabajo verifica que exista una relación estadísticamente significativa entre las variables de entrada y la variable objetivo. La regresión lineal múltiple es el punto de partida natural. El modelo no captura toda la complejidad física del problema, pero cuantifica de forma directa la varianza del \textit{Fuel Flow T/O} que se explica de forma lineal. Esta medición justifica el uso de modelos más costosos.
+
+\subsection{Formulación del modelo}
+
+El modelo usa $n$ observaciones. Cada observación tiene $p$ variables predictoras $p_1,\dots,p_p$: relación de derivación, relación de presión, empuje nominal y condiciones ambientales, entre otras. El modelo propone que la variable objetivo $y$ (el \textit{Fuel Flow T/O}) es una combinación lineal de las variables predictoras más un término de error aleatorio:
+
+\begin{equation}
+y = \beta_0 + \beta_1 p_1 + \beta_2 p_2 + \cdots + \beta_p p_p + \varepsilon,
+\label{eq:regresion_multiple}
+\end{equation}
+
+donde $\beta_0$ es la ordenada al origen, $\beta_1,\dots,\beta_p$ son los coeficientes de cada predictor y $\varepsilon \sim \mathcal{N}(0,\sigma^2)$ es el error entre el valor observado y el valor del modelo teórico. El error tiene media cero y varianza constante (homocedasticidad).
+
+En notación matricial, $\mathbf{X}\in\mathbb{R}^{n\times(p+1)}$ es la matriz de diseño. La primera columna de $\mathbf{X}$ contiene unos para el intercepto. $\mathbf{y}\in\mathbb{R}^n$ es el vector de observaciones y $\boldsymbol{\beta}\in\mathbb{R}^{p+1}$ es el vector de coeficientes. El modelo se escribe como
+
+\begin{equation}
+\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}.
+\label{eq:regresion_matricial}
+\end{equation}
+
+\subsection{Estimación por mínimos cuadrados}
+
+Los coeficientes $\boldsymbol{\beta}$ se estiman con la minimización de la suma de los residuos al cuadrado (\textit{Ordinary Least Squares}, OLS):
+
+\begin{equation}
+\hat{\boldsymbol{\beta}} = \arg\min_{\boldsymbol{\beta}} \; \lVert \mathbf{y}-\mathbf{X}\boldsymbol{\beta} \rVert^2 = \arg\min_{\boldsymbol{\beta}} \; (\mathbf{y}-\mathbf{X}\boldsymbol{\beta})^\top(\mathbf{y}-\mathbf{X}\boldsymbol{\beta}).
+\label{eq:ols_objetivo}
+\end{equation}
+
+La derivada respecto a $\boldsymbol{\beta}$ se iguala a cero. Así se obtiene la ecuación normal, cuya solución cerrada es
+
+\begin{equation}
+\hat{\boldsymbol{\beta}} = (\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}.
+\label{eq:ols_solucion}
+\end{equation}
+
+Cada $\hat{\beta}_j$ representa el cambio esperado en el \textit{Fuel Flow T/O} por cada unidad de cambio en la variable $p_j$, si las demás variables permanecen constantes.
+
+\subsection{Bondad de ajuste}
+
+El coeficiente de determinación $R^2$ mide la proporción de la varianza total de $y$ que explica el modelo:
+
+\begin{equation}
+R^2 = 1 - \frac{\sum_{i=1}^n (y_i - \hat{y}_i)^2}{\sum_{i=1}^n (y_i - \bar{y})^2} = 1 - \frac{SS_{res}}{SS_{tot}},
+\label{eq:r2}
+\end{equation}
+
+donde $SS_{res}$ es la suma de cuadrados residual y $SS_{tot}$ es la suma de cuadrados total respecto a la media $\bar{y}$. Un valor de $R^2$ cercano a 1 indica que las variables predictoras explican la mayor parte de la variabilidad observada. Un valor bajo sugiere que la relación no es principalmente lineal y motiva el uso de modelos no lineales. El $R^2$ aumenta de forma artificial con el número de predictores. Por esta razón, la práctica recomienda complementarlo con el $R^2$ ajustado, que penaliza las variables poco informativas.
+
+\section{Regresión por Procesos Gaussianos (GPR)}
+\label{sec:gpr}
+
+\subsection{Idea intuitiva}
+
+Un proceso gaussiano (GP) generaliza la distribución normal multivariada al espacio de funciones. En lugar de asignar una distribución de probabilidad a un vector de valores, el GP asigna una distribución de probabilidad a funciones completas. El modelo no fija una única forma funcional, como la recta del modelo lineal. El GPR mantiene una familia infinita de funciones candidatas. Cuando se observan datos, el modelo descarta de forma progresiva las funciones incompatibles con esas observaciones. Al final queda una distribución posterior concentrada alrededor de las funciones más plausibles. El resultado es una predicción puntual y su incertidumbre. Esta propiedad es útil para la detección de anomalías de la Sección~\ref{sec:intervalos}.
+
+\subsection{Definición formal}
+
+Un proceso gaussiano queda definido por una función de media $m(x)$ y una función de covarianza o \textit{kernel} $k(x,x')$:
+
+\begin{equation}
+f(x) \sim \mathcal{GP}\big(m(x),\, k(x,x')\big),
+\label{eq:gpr}
+\end{equation}
+
+Para cualquier conjunto finito de puntos $\mathbf{x}=(x_1,\dots,x_n)$, el vector $\mathbf{f}=(f(x_1),\dots,f(x_n))$ se distribuye como una normal multivariada:
+
+\begin{equation}
+\mathbf{f} \sim \mathcal{N}\big(m(\mathbf{x}),\, K(\mathbf{x},\mathbf{x})\big),
+\end{equation}
+
+donde $K(\mathbf{x},\mathbf{x})$ es la matriz de covarianza. La entrada $(i,j)$ de esta matriz es $k(x_i,x_j)$. En la práctica, el modelo asume $m(x)=0$ después de centrar los datos. Así, toda la estructura del modelo queda codificada en el kernel.
+
+\subsection{Predicción}
+
+El conjunto de observaciones es $\mathbf{y} = \mathbf{f}(\mathbf{X}) + \boldsymbol{\varepsilon}$, con ruido $\varepsilon\sim\mathcal{N}(0,\sigma_n^2)$. El punto nuevo donde se desea predecir es $x_*$. Los valores $\mathbf{y}$ y $f(x_*)$ son conjuntamente gaussianos. Por esta razón, la distribución condicional o posterior de $f(x_*)$ dado $\mathbf{y}$ también es gaussiana. Su media y su varianza tienen forma cerrada:
+
+\begin{equation}
+\bar{f}(x_*) = \mathbf{k}_*^\top \big(K + \sigma_n^2 I\big)^{-1} \mathbf{y},
+\label{eq:gpr_media}
+\end{equation}
+
+\begin{equation}
+\mathbb{V}[f(x_*)] = k(x_*,x_*) - \mathbf{k}_*^\top \big(K + \sigma_n^2 I\big)^{-1} \mathbf{k}_*,
+\label{eq:gpr_varianza}
+\end{equation}
+
+donde $\mathbf{k}_*$ es el vector de covarianzas entre $x_*$ y cada punto de entrenamiento, y $K=K(\mathbf{X},\mathbf{X})$. La ecuación~\eqref{eq:gpr_media} es un promedio ponderado de las observaciones de entrenamiento. El peso de cada observación depende de qué tan cerca esté $x_*$ según el kernel. La ecuación~\eqref{eq:gpr_varianza} muestra que la incertidumbre crece en regiones alejadas de los datos de entrenamiento. Este comportamiento es el esperado: el modelo tiene más seguridad donde tiene más evidencia.
+
+\subsection{Funciones de covarianza (kernels)}
+
+El kernel determina la suavidad y el tipo de correlación que el proceso asume entre observaciones cercanas en el espacio de entrada. Este trabajo considera tres kernels.
+
+\paragraph{Exponencial cuadrado (RBF)}
+\begin{equation}
+k_{RBF}(x,x') = \sigma_f^2 \exp\!\left(-\frac{\lVert x-x' \rVert^2}{2\ell^2}\right),
+\label{eq:kernel_rbf}
+\end{equation}
+donde $\ell$ es la longitud de escala y controla qué tan rápido decae la correlación con la distancia. $\sigma_f^2$ escala la varianza de la función. Este kernel genera funciones infinitamente diferenciables, es decir, muy suaves.
+
+\paragraph{Exponencial}
+\begin{equation}
+k_{Exp}(x,x') = \sigma_f^2 \exp\!\left(-\frac{\lVert x-x' \rVert}{\ell}\right),
+\label{eq:kernel_exp}
+\end{equation}
+Este kernel es un caso particular de la familia Matérn ($\nu=1/2$). Asume funciones continuas, pero mucho menos suaves que la RBF. Es apropiado si se sospecha un comportamiento más errático en los datos.
+
+\paragraph{Cuadrático racional}
+\begin{equation}
+k_{RQ}(x,x') = \sigma_f^2 \left(1 + \frac{\lVert x-x' \rVert^2}{2\alpha \ell^2}\right)^{-\alpha},
+\label{eq:kernel_rq}
+\end{equation}
+Este kernel se interpreta como una superposición infinita de kernels RBF con distintas longitudes de escala. Las longitudes se ponderan con una distribución gamma de parámetro de forma $\alpha$. Cuando $\alpha\to\infty$, el kernel recupera exactamente el kernel RBF.
+
+\subsection{Ajuste de hiperparámetros}
+
+Los hiperparámetros de cada kernel son $\ell$, $\sigma_f^2$, $\sigma_n^2$ y, cuando corresponde, $\alpha$. El modelo estima estos valores con la maximización de la log-verosimilitud marginal de los datos de entrenamiento:
+
+\begin{equation}
+\log p(\mathbf{y}\mid\mathbf{X}) = -\frac{1}{2}\mathbf{y}^\top(K+\sigma_n^2 I)^{-1}\mathbf{y} - \frac{1}{2}\log\lvert K+\sigma_n^2 I\rvert - \frac{n}{2}\log 2\pi,
+\label{eq:gpr_verosimilitud}
+\end{equation}
+
+Esta expresión balancea el ajuste a los datos (primer término) contra la complejidad del modelo (segundo término). Por esta razón, el GPR es relativamente robusto al sobreajuste, incluso con conjuntos de datos de tamaño moderado como el EEDB.
+
+\section{Máquinas de Vectores de Soporte (SVM)}
+\label{sec:svr}
+
+\subsection{Idea intuitiva}
+
+Las Máquinas de Vectores de Soporte (SVM) nacieron para la clasificación. En regresión, la literatura también usa el nombre SVR (\textit{Support Vector Regression}). Este documento usa el nombre SVM, igual que el artículo de referencia.
+
+La regresión lineal minimiza el error cuadrático de todos los puntos. La SVM, en cambio, tolera un margen de error $\varepsilon$ alrededor de la función de predicción. El modelo no penaliza los puntos que caen dentro de este margen, llamado tubo $\varepsilon$-insensible. Solo los puntos que quedan fuera del tubo contribuyen al error y determinan la forma final del modelo. Estos puntos son los \textit{vectores de soporte}. Esta formulación hace que el modelo sea menos sensible a pequeñas fluctuaciones de ruido. También hace que la complejidad del modelo dependa del número de vectores de soporte y no del número total de observaciones.
+
+\subsection{Formulación primal}
+
+El conjunto de entrenamiento es $\{(x_i,y_i)\}_{i=1}^n$. La SVM lineal busca una función $f(x)=w^\top x + b$ que minimice al mismo tiempo la complejidad del modelo (norma de $w$) y el error fuera del margen $\varepsilon$:
+
+\begin{equation}
+\min_{w,b,\xi,\xi^*} \; \frac{1}{2}\lVert w \rVert^2 + C\sum_{i=1}^n (\xi_i+\xi_i^*)
+\label{eq:svr_primal}
+\end{equation}
+\begin{align}
+\text{sujeto a}\quad & y_i - w^\top x_i - b \le \varepsilon + \xi_i, \\
+& w^\top x_i + b - y_i \le \varepsilon + \xi_i^*, \\
+& \xi_i,\xi_i^* \ge 0,
+\end{align}
+
+donde $\xi_i,\xi_i^*$ son variables de holgura que permiten que algunos puntos violen el margen $\varepsilon$. $C>0$ es un hiperparámetro de regularización. Este hiperparámetro controla el compromiso entre minimizar la complejidad del modelo (margen amplio y mayor tolerancia al error) y minimizar el error de entrenamiento (ajuste más estricto a los datos).
+
+\subsection{Formulación dual y el truco del kernel}
+
+El problema anterior se resuelve con multiplicadores de Lagrange $\alpha_i,\alpha_i^*$. La solución del problema dual se expresa solo en términos de productos internos entre observaciones:
+
+\begin{equation}
+f(x) = \sum_{i=1}^n (\alpha_i-\alpha_i^*)\, \langle x_i, x\rangle + b.
+\label{eq:svr_dual}
+\end{equation}
+
+Cuando la relación entre entradas y salida no es lineal, el modelo sustituye el producto interno $\langle x_i,x\rangle$ por una función de kernel $K(x_i,x)$. Esta sustitución equivale a proyectar los datos a un espacio de mayor dimensión donde sí es posible ajustar una relación lineal. Este procedimiento se conoce como truco del kernel y evita calcular la proyección de forma explícita:
+
+\begin{equation}
+f(x) = \sum_{i=1}^n (\alpha_i-\alpha_i^*)\, K(x_i,x) + b = \big(K_{x_i}\cdot W_{jk}\big) + b,
+\label{eq:svr_kernel}
+\end{equation}
+
+Esta expresión es equivalente a la del artículo~\cite{Kurt2024}. En ella, $K_{x_i}$ es la transformación no lineal aplicada a la entrada y $W_{jk}$ agrupa los coeficientes duales. Este trabajo evalúa tres kernels:
+
+\begin{align}
+K_{lineal}(x_i,x_j) &= x_i^\top x_j, \label{eq:kernel_lineal}\\
+K_{poly}(x_i,x_j) &= (x_i^\top x_j + c)^d, \quad d\in\{2,3\}, \label{eq:kernel_poly}
+\end{align}
+
+El kernel lineal recupera esencialmente una regresión lineal regularizada. Los kernels polinomiales de grado 2 (cuadrático) y grado 3 (cúbico) capturan interacciones y curvaturas de orden creciente entre las variables de entrada y el \textit{Fuel Flow T/O}. Estos kernels aumentan el riesgo de sobreajuste si el grado es demasiado alto para la cantidad de datos disponible.
+
+\section{Perceptrón Multicapa (MLP)}
+\label{sec:mlp}
+
+\subsection{Idea intuitiva}
+
+El Perceptrón Multicapa aproxima relaciones no lineales con el encadenamiento de transformaciones simples. Cada capa aplica una combinación lineal de sus entradas y después una no linealidad puntual. Cada transformación es sencilla, pero su composición a través de varias capas permite representar funciones arbitrariamente complejas (teorema de aproximación universal). Esta capacidad es apropiada para el \textit{Fuel Flow T/O}, cuya dependencia respecto a las variables de diseño y a las condiciones ambientales no es estrictamente lineal.
+
+\subsection{Propagación hacia adelante}
+
+El vector de entrada es $\mathbf{a}^{(0)}=x$. Cada capa $l=1,\dots,L$ calcula
+
+\begin{equation}
+\mathbf{z}^{(l)} = W^{(l)}\mathbf{a}^{(l-1)} + \mathbf{b}^{(l)}, \qquad \mathbf{a}^{(l)} = \phi\big(\mathbf{z}^{(l)}\big),
+\label{eq:mlp_forward}
+\end{equation}
+
+donde $W^{(l)}$ y $\mathbf{b}^{(l)}$ son la matriz de pesos y el vector de sesgos de la capa $l$. $\phi(\cdot)$ es una función de activación no lineal que se aplica elemento a elemento. En las capas ocultas se usa con frecuencia ReLU, $\phi(z)=\max(0,z)$. En la capa de salida se usa una función lineal porque el problema es de regresión. La salida de la red es $\hat{y}=\mathbf{a}^{(L)}$.
+
+\subsection{Función de pérdida y entrenamiento}
+
+El entrenamiento ajusta los parámetros $\theta=\{W^{(l)},\mathbf{b}^{(l)}\}_{l=1}^L$. El objetivo es minimizar el error cuadrático medio sobre el conjunto de entrenamiento:
+
+\begin{equation}
+\mathcal{L}(\theta) = \frac{1}{n}\sum_{i=1}^n \big(y_i - \hat{y}_i(\theta)\big)^2.
+\label{eq:mlp_loss}
+\end{equation}
+
+Los parámetros se actualizan de forma iterativa con descenso de gradiente o con variantes adaptativas como Adam:
+
+\begin{equation}
+\theta \leftarrow \theta - \eta \, \nabla_\theta \mathcal{L}(\theta),
+\label{eq:mlp_gradiente}
+\end{equation}
+
+donde $\eta$ es la tasa de aprendizaje. El gradiente $\nabla_\theta \mathcal{L}$ se calcula con retropropagación (\textit{backpropagation}). Este método aplica la regla de la cadena desde la capa de salida hacia la capa de entrada:
+
+\begin{equation}
+\delta^{(L)} = \nabla_{\mathbf{a}^{(L)}}\mathcal{L} \odot \phi'\big(\mathbf{z}^{(L)}\big), \qquad
+\delta^{(l)} = \big(W^{(l+1)\top}\delta^{(l+1)}\big) \odot \phi'\big(\mathbf{z}^{(l)}\big),
+\label{eq:mlp_backprop}
+\end{equation}
+
+donde $\odot$ es el producto elemento a elemento. A partir de estas expresiones se obtienen los gradientes de cada peso: $\partial \mathcal{L}/\partial W^{(l)} = \delta^{(l)} \mathbf{a}^{(l-1)\top}$. La arquitectura de la red (número de capas ocultas y de neuronas por capa) y el algoritmo de optimización son hiperparámetros. Estos hiperparámetros afectan la capacidad de ajuste del modelo y su tendencia al sobreajuste. Por esta razón, su selección se apoya en el desempeño sobre un conjunto de validación independiente del de entrenamiento.
+
+\section{Métricas de evaluación del error}
+\label{sec:metricas}
+
+El trabajo compara el desempeño de los modelos con cuatro métricas estándar de error de regresión. Las métricas se calculan de forma independiente sobre los subconjuntos de entrenamiento, validación y prueba. Esta separación permite identificar posibles casos de sobreajuste cuando se compara el error entre subconjuntos:
+
+\begin{align}
+MSE &= \frac{1}{n}\sum_{i=1}^n (y_i-\hat{y}_i)^2, \label{eq:mse}\\
+MAE &= \frac{1}{n}\sum_{i=1}^n \lvert y_i-\hat{y}_i\rvert, \label{eq:mae}\\
+MAPE &= \frac{100\%}{n}\sum_{i=1}^n \left\lvert\frac{y_i-\hat{y}_i}{y_i}\right\rvert, \label{eq:mape}\\
+R &= \frac{\sum_{i=1}^n (y_i-\bar{y})(\hat{y}_i-\bar{\hat{y}})}{\sqrt{\sum_{i=1}^n (y_i-\bar{y})^2}\sqrt{\sum_{i=1}^n (\hat{y}_i-\bar{\hat{y}})^2}}. \label{eq:corr_r}
+\end{align}
+
+El MSE eleva al cuadrado los errores grandes y los penaliza con fuerza. Esta propiedad es útil para detectar predicciones muy alejadas del valor real. El MAE promedia la magnitud del error sin distinguir su dirección y es más robusto ante valores atípicos. El MAPE expresa el error en términos relativos al valor real. Esta forma facilita la interpretación independientemente de la escala del \textit{Fuel Flow T/O}. El coeficiente de correlación $R$ mide qué tan bien covarían las predicciones con los valores observados, sin considerar los sesgos sistemáticos de escala. Como referencia de la literatura, un modelo con un MAPE menor que el 10\% se clasifica como de alta precisión~\cite{Lewis1982}.
+
+\section{Intervalos de confianza para la detección de anomalías}
+\label{sec:intervalos}
+
+El trabajo selecciona el modelo con mejor desempeño según las métricas de la Sección~\ref{sec:metricas}. Después construye un intervalo de confianza alrededor de sus predicciones. El intervalo determina si el valor real de \textit{Fuel Flow T/O} de un motor específico está dentro del rango esperado. La intuición es la siguiente. Si los residuos del modelo en el conjunto de entrenamiento siguen aproximadamente una distribución normal centrada en cero, entonces es posible construir una banda alrededor de la predicción puntual. El valor real de un motor nuevo debe caer dentro de esta banda si el motor opera de forma normal.
+
+Para un nivel de confianza dado, el intervalo se construye como
+
+\begin{equation}
+\hat{ff}_{T/O} - z_{\alpha/2}\,\sigma < FF_{T/O} < \hat{ff}_{T/O} + z_{\alpha/2}\,\sigma,
+\label{eq:intervalo_confianza_teorico}
+\end{equation}
+
+donde $\hat{ff}_{T/O}$ es el valor estimado por el modelo, $\sigma$ es la desviación estándar de los residuos del modelo sobre el conjunto de entrenamiento y $z_{\alpha/2}$ es el valor crítico de la distribución normal estándar para el nivel de confianza elegido. Por ejemplo, $z_{0.005}=2.58$ para un nivel del 99\%. En el caso del GPR, la banda se construye de forma más directa a partir de la varianza predictiva del modelo, dada por la ecuación~\eqref{eq:gpr_varianza}. En este caso no se asume una $\sigma$ global constante.
+
+Si el valor real registrado en el EEDB cae dentro del intervalo, el motor opera dentro de los parámetros normales. Si cae fuera, el valor indica un posible deterioro de desempeño. Este mecanismo es la base del sistema de diagnóstico automático. El sistema evalúa el estado del motor durante la fase de despegue sin inspecciones físicas y sin conocimiento experto previo.
